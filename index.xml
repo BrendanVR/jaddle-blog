@@ -570,5 +570,64 @@ Note
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
   <media:content url="https://brendanvr.github.io/jaddle-blog/posts/max-cut/max-cut-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
+<item>
+  <title>Small Problems? Use Clarabel. Big Problems? Use Jaddle.</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/clarabel-vs-jaddle/clarabel-vs-jaddle.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Imagine you need to get across town. You could take one expensive sports car that makes the trip in a few careful, powerful moves. Or you could take a bus that makes lots of small, cheap stops, one after another. For one passenger, the sports car wins. For a thousand passengers, the bus is the only sensible choice.</p>
+<p>Optimisation solvers face the same choice. Some solvers make a small number of very careful, expensive steps. Others make many quick, cheap steps. Which one wins depends on the size of the problem, and it’s a lesson I keep running into across my recent posts.</p>
+<section id="two-ways-to-climb-a-hill" class="level2">
+<h2 class="anchored" data-anchor-id="two-ways-to-climb-a-hill">Two ways to climb a hill</h2>
+<p>Finding the best answer to an optimisation problem is a bit like climbing a hill in thick fog. You can’t see the top, but you can feel which way is uphill, and you keep moving that way.</p>
+<p>Some solvers, such as <strong>Clarabel</strong>, take careful steps. Each step is expensive: the solver works out a lot about the shape of the hill around it, which means solving a sizeable calculation. Because each step is so well-informed, you need only a few of them to reach the top.</p>
+<p><strong>Jaddle</strong> takes a different approach. Its steps are cheap. Each one is a handful of quick sums, the sort of arithmetic a computer can repeat at great speed. You need many more steps to reach the top, but each one costs very little.</p>
+</section>
+<section id="why-many-cheap-steps-can-win" class="level2">
+<h2 class="anchored" data-anchor-id="why-many-cheap-steps-can-win">Why many cheap steps can win</h2>
+<p>It sounds backwards. Surely a few smart steps should beat lots of dumb ones? Not always. Here’s the catch: the cost of one careful step grows quickly as the problem gets bigger. Double the size of the problem and a careful step can cost several times as much. A cheap step grows much more gently. Eventually the careful solver spends so long on each step that the cheap solver, taking far more steps, still arrives first.</p>
+<p>There’s a second benefit too. Cheap steps are easy to run in parallel. A graphics card, for example, is built to do thousands of simple sums at the same time. Lots of small, similar steps fit that kind of hardware beautifully.</p>
+</section>
+<section id="the-evidence" class="level2">
+<h2 class="anchored" data-anchor-id="the-evidence">The evidence</h2>
+<p>I’ve tried this on several problems in the series, and the picture is consistent.</p>
+<p><strong>Small problems: the careful solver wins.</strong> When I ran a <a href="../../posts/robust-kalman/robust-kalman.html">robust Kalman filter</a>, which tracks a moving object through noisy and sometimes wrong measurements, Clarabel finished in a fraction of a second. Jaddle took a few seconds. On a 30-node version of the network-splitting puzzle, the same story held: SCS was far quicker. The problems were small enough that the cheap steps didn’t have enough work to add up.</p>
+<p><strong>Big problems: the cheap solver wins.</strong> On a network with 1,000 nodes and about 150,000 links, which means a grid of a million numbers to arrange, SCS took about 126 seconds. Jaddle finished in about 18 seconds, roughly seven times faster, and both reached the same answer.</p>
+<p><strong>Many problems at once: the cheap solver wins.</strong> When I controlled a <a href="../../posts/mpc-fleet/mpc-fleet.html">fleet of 1,000 small machines</a>, each one needed its own plan every moment. Solving them one at a time with SCS took about 420 microseconds per plan. Jaddle, solving all the plans together in one batch, took about 10 microseconds each, around forty times faster on a laptop graphics card. Even on an ordinary processor, the batched version was about three times faster than the one-at-a-time approach.</p>
+</section>
+<section id="the-honest-bit" class="level2">
+<h2 class="anchored" data-anchor-id="the-honest-bit">The honest bit</h2>
+<p>This is not a magic trick, and the crossover is real. On a single small problem, the careful solver is usually the right choice, and I’d rather tell you that than sell you something you don’t need. Jaddle’s advantage shows up when problems are large, or when you have many of them to solve together. If you’re solving one tiny problem a week, use the specialist tool.</p>
+</section>
+<section id="a-quick-decision-guide" class="level2">
+<h2 class="anchored" data-anchor-id="a-quick-decision-guide">A quick decision guide</h2>
+<ul>
+<li><strong>One small problem, needed occasionally:</strong> use Clarabel.</li>
+<li><strong>One large problem:</strong> try Jaddle, and compare it against Clarabel on your own data.</li>
+<li><strong>Many similar problems at once:</strong> Jaddle, especially batched on a GPU.</li>
+<li><strong>You need a high-accuracy answer fast on a tiny problem:</strong> Clarabel. Its careful steps pay off when precision matters more than throughput.</li>
+</ul>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>When you choose a solver, don’t ask only which one is cleverest. Ask how big your problem is, how many you need to solve, and whether a crowd of cheap steps can beat a small team of expensive ones. For small problems, use Clarabel. For big ones, lots of cheap steps often win, and Jaddle is built around exactly that idea.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>Clarabel</category>
+  <category>GPU</category>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/clarabel-vs-jaddle/clarabel-vs-jaddle.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/clarabel-vs-jaddle/clarabel-vs-jaddle-logo.svg" medium="image" type="image/svg+xml"/>
+</item>
 </channel>
 </rss>
