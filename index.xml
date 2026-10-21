@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>Jaddle</title>
+<link>https://your-website-url.example.com/</link>
+<atom:link href="https://your-website-url.example.com/index.xml" rel="self" type="application/rss+xml"/>
+<description>A blog built with Quarto</description>
+<generator>quarto-1.10.19</generator>
+<lastBuildDate>Tue, 20 Oct 2026 16:00:00 GMT</lastBuildDate>
+<item>
+  <title>How Much Wobble Can You Handle?</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/portfolio/portfolio.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?</p>
+<p>If you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that’s like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.</p>
+<p>This example explores that trade-off.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The data in this example is entirely made up. Nothing here is financial advice!</p>
+</div>
+</div>
+<section id="the-rules-of-the-game" class="level2">
+<h2 class="anchored" data-anchor-id="the-rules-of-the-game">The rules of the game</h2>
+<p>We need to decide what <strong>fraction</strong> of our money goes into each of the 500 assets. The rules are:</p>
+<ul>
+<li>The fractions must add up to 100%. We invest all the money, no more and no less.</li>
+<li>No fraction can be negative. In finance-speak, the portfolio is <em>long-only</em>: we can’t bet against an asset or borrow to invest.</li>
+<li>The portfolio’s <strong>volatility</strong> (how much it’s expected to wobble) must stay below a limit we choose.</li>
+</ul>
+<p>Within those rules, we want the highest <strong>expected return</strong>.</p>
+</section>
+<section id="two-kinds-of-wobble" class="level2">
+<h2 class="anchored" data-anchor-id="two-kinds-of-wobble">Two kinds of wobble</h2>
+<p>To measure wobble, we use what’s called a <strong>factor model</strong>. It says each asset’s ups and downs come from two sources.</p>
+<p><strong>Shared wobble.</strong> Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or <em>factors</em>, and each asset reacts to them in its own way.</p>
+<p><strong>Personal wobble.</strong> Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.</p>
+<p>This distinction matters because the two kinds of wobble behave differently when you combine assets:</p>
+<ul>
+<li><strong>Personal wobbles tend to cancel out.</strong> If you own lots of different things, one asset’s bad day is often balanced by another’s good day. This is the magic of <strong>diversification</strong>.</li>
+<li><strong>Shared wobbles don’t cancel.</strong> If all your assets love sunny weather, owning more of them doesn’t protect you from rain.</li>
+</ul>
+</section>
+<section id="where-the-ice-cream-cone-comes-in" class="level2">
+<h2 class="anchored" data-anchor-id="where-the-ice-cream-cone-comes-in">Where the ice-cream cone comes in</h2>
+<p>To work out a portfolio’s total wobble, you collect all its exposures, to each shared factor and to each asset’s personal risk, and measure their combined size, the way you’d measure the length of an arrow from its parts.</p>
+<p>The rule “this combined size must be below the limit” has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you’d get a shape like a cone. It even has a nickname among optimisation folk: the <strong>ice-cream cone</strong>. Its formal name is the <em>second-order cone</em>.</p>
+<p>Why does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like “this plus that must be at most ten”. A cone has a curved, rounded surface, so those solvers can’t take it directly. <a href="https://github.com/BrendanVR/Jaddle">Jaddle</a> can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it’s wandered out.</p>
+</section>
+<section id="tracing-the-efficient-frontier" class="level2">
+<h2 class="anchored" data-anchor-id="tracing-the-efficient-frontier">Tracing the efficient frontier</h2>
+<p>Rather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.</p>
+<p>If you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the <strong>efficient frontier</strong>. Every point on it is a portfolio where you can’t get more expected return without accepting more risk. Any portfolio <em>below</em> the curve is leaving money on the table.</p>
+<p>Two things make tracing this curve quicker:</p>
+<ul>
+<li><strong>Warm starts.</strong> Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn’t change the best portfolio completely, so starting nearby saves a lot of work.</li>
+<li><strong>Reusing the setup.</strong> The problem is described once, and only the wobble limit changes between solves.</li>
+</ul>
+</section>
+<section id="the-slope-tells-a-story" class="level2">
+<h2 class="anchored" data-anchor-id="the-slope-tells-a-story">The slope tells a story</h2>
+<p>Every time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: <strong>“If I allowed a little more wobble, how much extra return would I get?”</strong></p>
+<p>That’s precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you’re being very cautious, accepting a bit more risk buys you a healthy boost in return. When you’re already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much.</p>
+</section>
+<section id="what-the-portfolios-look-like" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-portfolios-look-like">What the portfolios look like</h2>
+<p>At the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.</p>
+<p>As the limit loosens, the portfolio <strong>concentrates</strong> on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites.</p>
+</section>
+<section id="checking-our-work" class="level2">
+<h2 class="anchored" data-anchor-id="checking-our-work">Checking our work</h2>
+<p>To make sure Jaddle’s answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves.</p>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>Investing well isn’t just about picking winners. It’s about understanding how your choices wobble <em>together</em>. By describing risk as the size of an arrow, and using a solver that’s comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>cone programming</category>
+  <category>finance</category>
+  <guid>https://your-website-url.example.com/posts/portfolio/portfolio.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/portfolio/portfolio-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+<item>
+  <title>The Goldilocks Battery</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/battery-sizing/battery-sizing.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Picture a building with solar panels on the roof. At midday the sun is blazing and the panels are churning out electricity. In the evening, when everyone gets home and turns on the oven, the TV and the kettle, the sun has gone down and the power has to come from the grid, at the most expensive time of day.</p>
+<p>The obvious fix is a battery: soak up cheap or free energy when it’s plentiful and use it later when it’s pricey. But batteries aren’t free. Buy one that’s too small and you miss out on savings. Buy one that’s too big and you’ve paid for capacity you never use.</p>
+<p>So how big should it be? Like Goldilocks, we’re looking for the one that’s <em>just right</em>.</p>
+<section id="two-questions-hiding-inside-one" class="level2">
+<h2 class="anchored" data-anchor-id="two-questions-hiding-inside-one">Two questions hiding inside one</h2>
+<p>It turns out “how big a battery should I buy?” contains a second question tucked inside it: <strong>“how would I actually use it?”</strong></p>
+<p>You can’t judge a battery without knowing how it would be run. A big battery used badly might save less than a small battery used cleverly. So, to size the battery, we need to know how to operate it well on every kind of day it might face.</p>
+<p>That gives us two layers:</p>
+<ol type="1">
+<li><strong>The operating problem</strong> (every day): given a battery of a certain size, when should it charge and when should it discharge to make the electricity bill as small as possible?</li>
+<li><strong>The sizing problem</strong> (once): given that we’ll always run the battery as well as we can, which size gives the lowest total cost, counting both the battery’s price and the bills?</li>
+</ol>
+</section>
+<section id="one-day-at-a-time" class="level2">
+<h2 class="anchored" data-anchor-id="one-day-at-a-time">One day at a time</h2>
+<p>We split each day into 24 hours. Each hour has:</p>
+<ul>
+<li>an <strong>electricity price</strong>, which peaks in the morning and, even more, in the evening;</li>
+<li>a <strong>demand</strong>, the amount of power the building needs, which follows a similar pattern;</li>
+<li>some <strong>solar output</strong>, which peaks around lunchtime and depends on how cloudy the day is.</li>
+</ul>
+<p>The battery has two numbers that describe its size, and it’s worth knowing the difference:</p>
+<ul>
+<li><strong>Energy capacity</strong> (in kilowatt-hours) is how much it can <em>store</em>. Think of it as the size of a water tank.</li>
+<li><strong>Power rating</strong> (in kilowatts) is how fast it can <em>charge or discharge</em>. Think of it as the width of the tap.</li>
+</ul>
+<p>A huge tank with a tiny tap can’t empty fast enough to cover the evening rush. A wide tap on a tiny tank runs dry in minutes. You need a sensible match.</p>
+<p>Planning one day’s battery use, given the prices, the demand, the sunshine and the battery’s size, is a classic <strong>linear program</strong>: a puzzle where you choose a bunch of numbers (how much to charge, discharge and buy each hour) to minimise a cost, while obeying straightforward rules like “you can’t store more than the tank holds” and “the lights must stay on”. The battery also has to end the day as full as it started, so it can’t cheat by borrowing from tomorrow.</p>
+</section>
+<section id="thirty-two-days-of-weather" class="level2">
+<h2 class="anchored" data-anchor-id="thirty-two-days-of-weather">Thirty-two days of weather</h2>
+<p>One day isn’t enough to make a decision. Some days are sunny, some are gloomy, and prices bounce around. So we generate <strong>32 sample days</strong>, each with its own mix of prices, demand and sunshine, and judge each battery size by its average performance across all of them.</p>
+<p>That means every time we want to test a battery size, we have to solve 32 operating puzzles. That could get slow.</p>
+</section>
+<section id="the-bulk-discount-twist" class="level2">
+<h2 class="anchored" data-anchor-id="the-bulk-discount-twist">The bulk-discount twist</h2>
+<p>There’s one more wrinkle, and it’s the reason this example exists. Batteries enjoy <strong>economies of scale</strong>: a bigger battery costs more, but not proportionally more. In our model, doubling the battery’s size makes it about 1.74 times as expensive, not twice as expensive.</p>
+<p>That sounds like good news for your wallet, and it is. But it’s bad news for the maths. If cost were perfectly proportional to size, the whole thing (sizing plus all 32 days) could be bundled into one giant linear program and solved directly, very quickly. The bulk discount bends the cost curve, and that bend breaks the neat linear structure. We need a different approach.</p>
+</section>
+<section id="feeling-for-the-slope" class="level2">
+<h2 class="anchored" data-anchor-id="feeling-for-the-slope">Feeling for the slope</h2>
+<p>Here is the trick. Imagine you’re standing on a hillside in thick fog, and you want to reach the bottom of the valley. You can’t see the bottom, but you <em>can</em> feel which way the ground slopes under your feet. So you take a step downhill, feel again, take another step, and so on. This is called <strong>gradient descent</strong>, and it’s one of the most widely used ideas in all of computing.</p>
+<p>To use it, we need the slope: if we made the battery a tiny bit bigger, would the total cost go up or down, and by how much?</p>
+<p>The lovely part is that the operating puzzles hand us this information <strong>for free</strong>. When a linear program finishes, its solution comes with extra numbers that say how much the best possible cost would change if each limit were loosened a little. One of those limits is “the battery can’t hold more than its capacity”, so the solver already knows how much a slightly bigger battery would have saved on that day. We don’t have to do any extra work to get the slope.</p>
+<p><a href="https://github.com/BrendanVR/Jaddle">Jaddle</a> solves all 32 daily puzzles <strong>at once</strong>, in a single batch, collects the slopes, and combines them with the slope of the battery’s price. Then we take a step downhill and repeat. Forty steps later, we’ve arrived.</p>
+</section>
+<section id="the-answer" class="level2">
+<h2 class="anchored" data-anchor-id="the-answer">The answer</h2>
+<p>Across our 32 sample days:</p>
+<ul>
+<li>With <strong>no battery</strong>, the site spends about <strong>$6.02 per day</strong> on electricity.</li>
+<li>With the battery that gradient descent found, the total daily cost (battery <em>and</em> bills) drops to about <strong>$3.83 per day</strong>.</li>
+</ul>
+<p>The best battery stores roughly <strong>14 to 15 kilowatt-hours</strong>.</p>
+</section>
+<section id="did-we-find-the-real-bottom" class="level2">
+<h2 class="anchored" data-anchor-id="did-we-find-the-real-bottom">Did we find the real bottom?</h2>
+<p>Because of that bulk-discount bend, the landscape isn’t a perfectly smooth bowl. Gradient descent always walks downhill, but it can get stuck in a small dip that isn’t the deepest point. And there’s no exact solver for this problem we can check against.</p>
+<p>So we did the next best thing: we started again from a completely different place. The first run began with a tiny battery and grew it. The second began with an absurdly oversized battery and shrank it. Both hikers walked down through the fog and met in the same valley. Their costs agreed to within 0.03%.</p>
+<p>Their battery sizes agreed slightly less closely (about 14.3 versus 14.6 kilowatt-hours). That’s not a problem; it tells us the valley floor is wide and flat. Near the best size, a little bigger or a little smaller makes almost no difference to the cost. That’s handy in real life, where batteries only come in certain sizes anyway.</p>
+</section>
+<section id="what-the-battery-actually-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-battery-actually-does">What the battery actually does</h2>
+<p>If you look at the plan for the sunniest day, the battery behaves just as you’d hope. It fills up around midday when the solar panels are producing more than the building needs, then drains during the expensive evening peak, cutting the amount of power bought from the grid when prices are highest.</p>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>Big decisions often depend on lots of small ones. Here, a one-off purchase depends on thousands of hour-by-hour choices across many different days. By solving all the small problems together, and using the slopes they give away for free, we can steer the big decision step by step until it’s just right. Not too big, not too small.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>linear programming</category>
+  <category>energy</category>
+  <guid>https://your-website-url.example.com/posts/battery-sizing/battery-sizing.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/battery-sizing/battery-sizing-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+<item>
+  <title>Ignoring the Fibbers</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/robust-kalman/robust-kalman.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Imagine you’re trying to follow a remote-controlled boat drifting around a pond, but you can’t see it directly. Instead, a friend on the bank shouts out its position every few seconds. Most of the time they’re pretty accurate, give or take a little. But your friend is easily distracted, and about one time in five they shout out something completely off, as if they’d glanced at a duck instead.</p>
+<p>Can you still work out where the boat actually went?</p>
+<section id="two-sources-of-information" class="level2">
+<h2 class="anchored" data-anchor-id="two-sources-of-information">Two sources of information</h2>
+<p>You have two things to go on:</p>
+<ol type="1">
+<li><strong>The measurements</strong>, your friend’s shouted positions. Most are close; some are wild.</li>
+<li><strong>The physics.</strong> Boats don’t teleport. They glide along, speeding up and slowing down smoothly, nudged now and then by gusts of wind you can’t predict.</li>
+</ol>
+<p>The trick is to combine them. You’re looking for a path that <strong>obeys the physics</strong> and stays <strong>reasonably close to the measurements</strong>. If a measurement says the boat jumped five metres to the left in an instant, the physics says “that’s not possible”, and the path should mostly ignore it.</p>
+<p>Finding the best such path, after the fact, using all the measurements at once, is called <strong>smoothing</strong>.</p>
+</section>
+<section id="the-classic-recipe-the-kalman-smoother" class="level2">
+<h2 class="anchored" data-anchor-id="the-classic-recipe-the-kalman-smoother">The classic recipe: the Kalman smoother</h2>
+<p>In the 1960s, Rudolf Kalman developed a beautifully efficient method for exactly this kind of problem. Versions of his ideas helped steer the Apollo spacecraft to the Moon, and today they run inside phones, cars, drones and countless other gadgets.</p>
+<p>The classic approach chooses the path that keeps two things small at once:</p>
+<ul>
+<li>the <strong>wind gusts</strong> needed to explain the path (smaller gusts mean a more natural path), and</li>
+<li>the <strong>misses</strong>, the gaps between the path and each measurement.</li>
+</ul>
+<p>To combine all the misses into one number, it <strong>squares</strong> each one and adds them up. Squaring makes sense when errors are small and well-behaved: it treats misses in either direction equally and is very convenient mathematically.</p>
+</section>
+<section id="the-problem-with-squaring" class="level2">
+<h2 class="anchored" data-anchor-id="the-problem-with-squaring">The problem with squaring</h2>
+<p>Squaring has a weakness. A miss that’s twice as big counts <em>four</em> times as much. A miss that’s twenty times as big counts <em>four hundred</em> times as much.</p>
+<p>In our example, the occasional wild measurement is about twenty times noisier than a normal one. So when the classic smoother tries to keep the squared misses small, those few wild measurements dominate everything. They act like bullies, dragging the estimated path towards themselves, because ignoring them would be “too expensive”.</p>
+<p>It’s a bit like a teacher averaging test scores where one student’s answer of “a million” for a question with answer “seven” drags the class average into the stratosphere.</p>
+</section>
+<section id="a-fairer-referee-the-huber-penalty" class="level2">
+<h2 class="anchored" data-anchor-id="a-fairer-referee-the-huber-penalty">A fairer referee: the Huber penalty</h2>
+<p>The fix is to change how misses are scored. Instead of squaring every miss, we use the <strong>Huber penalty</strong>, named after the statistician Peter Huber:</p>
+<ul>
+<li>For <strong>small misses</strong>, it behaves just like squaring. Normal, everyday noise is treated exactly as before.</li>
+<li>For <strong>big misses</strong>, it switches to growing in a straight line. A miss twice as big costs only about twice as much, not four times.</li>
+</ul>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>A helpful way to picture it
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The squared penalty is like a rubber band that pulls harder and harder the further you stretch it. The Huber penalty is a rubber band that, beyond a certain point, stops getting stronger and just pulls with a steady force. Wild measurements still tug on the path, but they can no longer yank it off course.</p>
+</div>
+</div>
+<p>This version is called the <strong>robust Kalman smoother</strong>. “Robust”, in statistics, means “doesn’t fall apart when some of the data is bad”.</p>
+</section>
+<section id="the-experiment" class="level2">
+<h2 class="anchored" data-anchor-id="the-experiment">The experiment</h2>
+<p>We simulate an object moving around a flat plane for 50 seconds, measured 1,000 times. It has a position and a speed, a little friction slowing it down, and random pushes knocking it around. Each measurement has a one-in-five chance of being an outlier.</p>
+<p>Then we estimate the path twice: once with the classic smoother and once with the robust one.</p>
+<p>The results are striking. The classic smoother’s path is visibly dragged around by the outliers, wandering off towards the wild measurements. The robust smoother’s path sticks closely to the true trajectory, as if it had simply noticed which shouts to take with a pinch of salt.</p>
+</section>
+<section id="what-jaddle-does-differently" class="level2">
+<h2 class="anchored" data-anchor-id="what-jaddle-does-differently">What Jaddle does differently</h2>
+<p>Both versions of the problem are written in <a href="https://www.cvxpy.org/">CVXPY</a>, a popular language for describing optimisation problems. In fact, this is one of CVXPY’s own showcase examples.</p>
+<p>The classic smoother is a relatively simple kind of problem (a <em>quadratic program</em>), and <a href="https://github.com/BrendanVR/Jaddle">Jaddle</a> solves it directly.</p>
+<p>The robust version is more interesting. Normally CVXPY would translate the Huber penalty into a bundle of cone-shaped rules, which works but makes the problem bigger and more complicated. Jaddle takes a different route: it keeps the Huber penalty as the smooth, gently curving function it really is, and solves the problem in that form. It also notices that the “miss” for each measurement is completely determined by the path, so it can drop those as separate unknowns and work with the path alone. Fewer moving parts, same answer.</p>
+<p>We check both of Jaddle’s answers against Clarabel, a well-established solver that comes with CVXPY, and they agree.</p>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>Real-world data is rarely perfectly behaved. Sensors glitch, signals bounce, people mishear. A method that assumes every measurement is roughly right can be thrown badly off course by a handful that aren’t.</p>
+<p>By changing one small thing, how we score big misses, the robust Kalman smoother learns to listen to the crowd without being bullied by the loudest fibbers. It’s a good lesson beyond boats and ponds: when you’re combining lots of evidence, make sure no single piece gets to shout over all the rest.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>estimation</category>
+  <category>robust statistics</category>
+  <guid>https://your-website-url.example.com/posts/robust-kalman/robust-kalman.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/robust-kalman/robust-kalman-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+<item>
+  <title>Herding a Thousand Springy Robots</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/mpc-fleet/mpc-fleet.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Imagine four blocks sitting in a row on a slippery table, joined to each other by springs, with the two end blocks also attached by springs to walls. Give one a poke and the whole chain starts jiggling back and forth. Now add three little motors, one between each neighbouring pair of blocks, that can push them apart or pull them together. And just to make life interesting, every so often a random shove knocks the blocks around.</p>
+<p>Your job is to keep the chain calm, and keep every block within a safe zone around its resting spot.</p>
+<p>Now imagine doing that for <strong>a thousand chains at once</strong>.</p>
+<section id="the-jiggling-blocks-system" class="level2">
+<h2 class="anchored" data-anchor-id="the-jiggling-blocks-system">The jiggling-blocks system</h2>
+<p>This setup comes from a well-known 2010 research paper by Yang Wang and Stephen Boyd, and it’s become a standard test for control methods. The rules are:</p>
+<ul>
+<li>Each motor has a <strong>strength limit</strong>. It can only push or pull so hard.</li>
+<li>Each block should stay within a <strong>safe zone</strong> around its resting position.</li>
+<li>We want the blocks to settle down without the motors working harder than necessary.</li>
+</ul>
+</section>
+<section id="thinking-ahead-model-predictive-control" class="level2">
+<h2 class="anchored" data-anchor-id="thinking-ahead-model-predictive-control">Thinking ahead: model predictive control</h2>
+<p>How do you decide what the motors should do? One of the most powerful approaches is called <strong>model predictive control</strong>, or <strong>MPC</strong>.</p>
+<p>MPC works a lot like a good chess player:</p>
+<ol type="1">
+<li><strong>Look at the board.</strong> Measure where every block is and how fast it’s moving.</li>
+<li><strong>Think several moves ahead.</strong> Using a model of how springs and blocks behave, plan the best sequence of motor pushes for the next 15 steps (about seven and a half seconds).</li>
+<li><strong>Make only the first move.</strong> Apply the first push in the plan.</li>
+<li><strong>Look again and re-plan.</strong> The world never goes exactly as predicted (those random shoves!), so throw the old plan away and make a fresh one from the new position.</li>
+</ol>
+<p>This loop of plan, act, re-plan makes MPC both clever and adaptable. It’s used in self-driving cars, chemical plants, robots, drones and even some heating systems.</p>
+<p>Each plan is a small optimisation puzzle called a <strong>quadratic program</strong>, with 105 numbers to choose and 120 rules to obey.</p>
+</section>
+<section id="soft-walls-instead-of-hard-ones" class="level2">
+<h2 class="anchored" data-anchor-id="soft-walls-instead-of-hard-ones">Soft walls instead of hard ones</h2>
+<p>There’s a subtle problem. Sometimes a random shove knocks a block so hard that <em>no</em> plan, however clever, can keep it inside its safe zone. If the rules said “the block must stay inside, no exceptions”, the puzzle would have no solution and the controller would be stuck.</p>
+<p>So the safe zones are made <strong>soft</strong>. A block is allowed to stray outside, but the plan pays a hefty fine for every bit it goes over. The fine is large enough that whenever staying inside is possible, the plan does exactly that. It’s only when there’s no other choice that a block is allowed to go a little over, and even then the plan does its best to bring it back.</p>
+<p>The motor limits, on the other hand, stay hard. A motor physically can’t push harder than its maximum, so the plan is never allowed to ask it to.</p>
+</section>
+<section id="one-at-a-time-versus-all-together" class="level2">
+<h2 class="anchored" data-anchor-id="one-at-a-time-versus-all-together">One at a time versus all together</h2>
+<p>A single one of these puzzles is tiny. A good solver running on an ordinary computer processor (CPU) can crack one in well under a thousandth of a second. That’s very hard to beat.</p>
+<p>But we don’t have one system. We have a thousand, each starting from its own random position and getting its own random shoves. At every step, we need a thousand fresh plans.</p>
+<p>Here’s where the two approaches differ:</p>
+<ul>
+<li><strong>The one-at-a-time approach</strong> solves the thousand puzzles one after another, using a well-known solver called SCS. It’s a bit like a single brilliant runner delivering a thousand letters, one trip at a time.</li>
+<li><strong>The all-together approach</strong> uses <a href="https://github.com/BrendanVR/Jaddle">Jaddle</a> on a graphics card (GPU). All thousand chains have the same springs, motors and rules; only their positions differ. So Jaddle solves all thousand puzzles <strong>side by side, in lockstep</strong>, like a marching band where every musician takes the same step at the same time.</li>
+</ul>
+<p>Both approaches use a <strong>warm start</strong>: each new plan begins from the previous step’s plan, shifted forward by one step. Since the world hasn’t changed much in half a second, the old plan is usually a great starting guess.</p>
+</section>
+<section id="and-the-winner-is" class="level2">
+<h2 class="anchored" data-anchor-id="and-the-winner-is">And the winner is…</h2>
+<p>It depends on how many systems you have, which is the most interesting part of the whole example.</p>
+<ul>
+<li><strong>One system:</strong> the one-at-a-time solver wins. A single tiny puzzle leaves a GPU almost entirely idle; it spends most of its time just getting started.</li>
+<li><strong>Tens of systems:</strong> the batched approach catches up.</li>
+<li><strong>A thousand systems:</strong> the batched approach on a laptop GPU spends about <strong>one-fortieth</strong> as long per puzzle as the one-at-a-time solver, and its plans are slightly <em>more</em> accurate too. Even running the batched approach on an ordinary CPU, it’s about three times faster than looping.</li>
+<li><strong>Ten thousand systems:</strong> something new happens…</li>
+</ul>
+</section>
+<section id="the-slowest-member-of-the-band" class="level2">
+<h2 class="anchored" data-anchor-id="the-slowest-member-of-the-band">The slowest member of the band</h2>
+<p>Remember the marching band? The band only finishes when its <strong>slowest</strong> member finishes. In a fleet of ten thousand, there are always a few chains in a tricky spot, perhaps just shoved past the edge of their safe zone, and their puzzles take longer to solve. Everyone else ends up waiting for them.</p>
+<p>The fix is something every real controller needs anyway: a <strong>deadline</strong>. We give the solver a fixed amount of effort per step. Any system that hasn’t fully finished by then simply uses the best plan it has so far. Because Jaddle always keeps its answers within the motor limits as it works, even an unfinished plan never asks a motor to do the impossible.</p>
+<p>With a deadline in place, the time per puzzle for ten thousand systems drops back down near its best.</p>
+</section>
+<section id="do-they-agree" class="level2">
+<h2 class="anchored" data-anchor-id="do-they-agree">Do they agree?</h2>
+<p>Speed is no use if the answers are wrong. So we check both approaches against a reference answer solved to extremely high accuracy. Both are close, and over the whole run, the two fleets end up with nearly identical total costs. The blocks stay calm, the motors stay within their limits, and the chains settle down in both cases.</p>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>This example isn’t saying “always use a GPU”. If you’re controlling <strong>one</strong> robot and need an answer within a strict fraction of a millisecond, a traditional CPU solver is still the right tool.</p>
+<p>But a surprising number of real problems involve lots of similar decisions at once: a fleet of delivery robots, a wind farm full of turbines, or testing one controller against thousands of possible futures to see how it copes. In those cases, it’s worth asking the marching-band question: <em>could all of these take the same step together?</em> When the answer is yes, solving them side by side can be dramatically faster than solving them one at a time.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>control</category>
+  <category>GPU</category>
+  <guid>https://your-website-url.example.com/posts/mpc-fleet/mpc-fleet.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/mpc-fleet/mpc-fleet-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+<item>
+  <title>Teaching a Robot Banker to Play Fair</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/fair-logistic-regression/fair-logistic-regression.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say “yes” or “no”. To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: <em>learn to do what they did.</em></p>
+<p>That sounds sensible. But there is a catch. What if the old decisions were unfair?</p>
+<section id="a-world-with-a-thumb-on-the-scale" class="level2">
+<h2 class="anchored" data-anchor-id="a-world-with-a-thumb-on-the-scale">A world with a thumb on the scale</h2>
+<p>In this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we’ll call <strong>Group A</strong> and <strong>Group B</strong>. About three in ten applicants belong to Group B.</p>
+<p>Every applicant has a few “skill” scores, things like income stability or repayment history. Here is the important part: <strong>the skills are spread out in exactly the same way in both groups.</strong> Nobody in Group B is any less capable, on average, than anyone in Group A.</p>
+<p>In a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.</p>
+<p>So the pile of old decisions, the one we’re asking the computer to learn from, quietly contains a bias.</p>
+</section>
+<section id="just-dont-tell-it-the-group" class="level2">
+<h2 class="anchored" data-anchor-id="just-dont-tell-it-the-group">“Just don’t tell it the group!”</h2>
+<p>The first idea most people have is simple: don’t show the computer which group each applicant is in. If it can’t see the group, surely it can’t discriminate?</p>
+<p>Sadly, it isn’t that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call <strong>proxies</strong>: clues that let you guess the group without being told.</p>
+<p>A computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of “postcode” were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a <em>negative</em> weight on those postcode-like features and approves Group B applicants far less often than Group A.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>The lesson
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Hiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own.</p>
+</div>
+</div>
+</section>
+<section id="how-the-robot-banker-thinks" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-robot-banker-thinks">How the robot banker thinks</h2>
+<p>The model we use is called <strong>logistic regression</strong>, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:</p>
+<ul>
+<li>Each feature (each skill score, each postcode detail) earns or loses the applicant some points.</li>
+<li>The points are added up into a single score.</li>
+<li>If the score is above zero, the answer is “yes”. Below zero, “no”.</li>
+</ul>
+<p>“Learning” just means adjusting how many points each feature is worth until the model’s answers match the training data as closely as possible. Finding the best point values is an <strong>optimisation problem</strong>: a search for the settings that make some measure of error as small as it can be.</p>
+</section>
+<section id="adding-a-fairness-rule" class="level2">
+<h2 class="anchored" data-anchor-id="adding-a-fairness-rule">Adding a fairness rule</h2>
+<p>To push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is <strong>demographic parity</strong>: both groups should be approved at the same rate.</p>
+<p>There is a small snag. Approval rates jump in steps: one applicant flips from “no” to “yes” and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:</p>
+<blockquote class="blockquote">
+<p>The model’s <em>average score</em> shouldn’t depend on which group you’re in.</p>
+</blockquote>
+<p>We also add a dial, which we’ll call the <strong>fairness bound</strong>. Turn the dial all the way up and there’s no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise.</p>
+</section>
+<section id="what-we-found" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-found">What we found</h2>
+<p>We trained two models: one with no fairness rule, and one with the dial at zero.</p>
+<p>The fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:</p>
+<ul>
+<li>Measured against the <strong>biased historical decisions</strong>, the fair model looks <em>worse</em>. Of course it does: it is refusing to copy the bias.</li>
+<li>Measured against the <strong>fair decisions</strong> (the ones that depend only on skill), the fair model looks <em>better</em>.</li>
+</ul>
+<p>In real life we would never get to see those “fair decisions”. We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then “accuracy against the past” can be a misleading report card.</p>
+</section>
+<section id="the-whole-trade-off-in-one-go" class="level2">
+<h2 class="anchored" data-anchor-id="the-whole-trade-off-in-one-go">The whole trade-off in one go</h2>
+<p>One fair model and one unfair model only tell part of the story. What about all the settings in between?</p>
+<p>We picked 40 different positions for the fairness dial and asked <a href="https://github.com/BrendanVR/Jaddle">Jaddle</a>, the optimisation library this example is built with, to train all 40 models <strong>at the same time</strong>, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.</p>
+<p>Reading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up.</p>
+</section>
+<section id="the-price-of-fairness" class="level2">
+<h2 class="anchored" data-anchor-id="the-price-of-fairness">The price of fairness</h2>
+<p>Here is my favourite part. When an optimiser obeys a rule, it can also tell you <strong>how much that rule is costing</strong>. Mathematicians call this a <em>dual variable</em> or <em>shadow price</em>. Think of it as a receipt that comes with each answer, saying: “if you tightened this rule by one more notch, the training error would go up by this much.”</p>
+<p>For our fairness rule, that receipt is a <strong>price of fairness</strong>. We found that:</p>
+<ul>
+<li>When the dial is loose enough that the rule isn’t actually stopping anything, the price is zero. The rule is just along for the ride.</li>
+<li>As the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.</li>
+</ul>
+<p>That’s useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is “worth it”, you can see the actual exchange rate and talk about it openly.</p>
+</section>
+<section id="a-few-footnotes" class="level2">
+<h2 class="anchored" data-anchor-id="a-few-footnotes">A few footnotes</h2>
+<p>Fairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.</p>
+<ul>
+<li><strong>Demographic parity is only one definition of fairness.</strong> Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.</li>
+<li><strong>Our world is made up.</strong> Real data is messier, and real bias is rarely a single fixed penalty.</li>
+<li><strong>The rule we used is a stand-in.</strong> Making average scores equal tends to bring approval rates together, but it doesn’t guarantee they match exactly.</li>
+</ul>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>A model trained to imitate the past will happily imitate the past’s mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>machine learning</category>
+  <category>fairness</category>
+  <guid>https://your-website-url.example.com/posts/fair-logistic-regression/fair-logistic-regression.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/fair-logistic-regression/fair-logistic-regression-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+<item>
+  <title>Max-Cut: The Art of Splitting a Room</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://your-website-url.example.com/posts/max-cut/max-cut.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Imagine you’re organising a quiz night with 30 people, and you need to split them into two teams. There’s a complication: some pairs of people simply cannot stop bickering. You’ve drawn a map of every bickering pair. Your goal is to put as many of those pairs as possible on <em>opposite</em> teams, so they’re too busy competing to argue with each other.</p>
+<p>This puzzle has a name, <strong>Max-Cut</strong>, and it is famously, stubbornly hard.</p>
+<section id="drawing-the-problem" class="level2">
+<h2 class="anchored" data-anchor-id="drawing-the-problem">Drawing the problem</h2>
+<p>Mathematicians picture this as a <strong>graph</strong>: a set of dots (the people) joined by lines (the bickering pairs). Splitting the people into two teams is like drawing a line across the page. Every connection that crosses your line counts as “cut”, and you want to cut as many as possible.</p>
+<p>In our example there are 30 people, and each pair has a 30% chance of being a bickering pair. That gives a graph with 119 connections.</p>
+</section>
+<section id="why-its-hard" class="level2">
+<h2 class="anchored" data-anchor-id="why-its-hard">Why it’s hard</h2>
+<p>With 30 people, each person can go on one of two teams, so there are 2 × 2 × 2 × … (thirty times) possible splits. That’s over a <strong>billion</strong> options. Add one more person and the number doubles. Add ten more and it’s a thousand times bigger.</p>
+<p>Checking every option is hopeless for big graphs, and as far as anyone knows, there’s no clever shortcut that always finds the perfect answer quickly. Max-Cut belongs to a family of problems called <strong>NP-hard</strong>, which is computer-science speak for “nobody knows how to solve these fast, and many people suspect nobody ever will.”</p>
+<p>So we settle for the next best thing: an answer that’s provably <em>close</em> to perfect.</p>
+</section>
+<section id="the-trick-pretend-its-easier" class="level2">
+<h2 class="anchored" data-anchor-id="the-trick-pretend-its-easier">The trick: pretend it’s easier</h2>
+<p>In 1995, Michel Goemans and David Williamson came up with a beautiful idea.</p>
+<p>In the real problem, each person has to pick a team. You could picture each person holding a compass needle that must point either straight <strong>north</strong> (Team North) or straight <strong>south</strong> (Team South). Bickering pairs want their needles pointing in opposite directions.</p>
+<p>Now let’s loosen the rules. Instead of only north or south, each person’s needle can point in <strong>any direction at all</strong>, not just on a flat map but in a space with many dimensions. Bickering pairs still want their needles to point as far apart as possible, but now there’s a whole sphere of in-between options.</p>
+<p>This loosened version is called a <strong>relaxation</strong>, and it has two wonderful properties:</p>
+<ol type="1">
+<li><strong>It’s much easier to solve.</strong> The relaxed problem is a type of puzzle called a <em>semidefinite program</em>, which, unlike the original, can be solved efficiently and exactly.</li>
+<li><strong>Its answer is a ceiling.</strong> Since every real split is also allowed in the relaxed version (north and south are still valid directions), the relaxed problem can only do better than or equal to the real one. So its score tells us: <em>no split can possibly cut more than this.</em></li>
+</ol>
+</section>
+<section id="back-to-reality-the-random-slice" class="level2">
+<h2 class="anchored" data-anchor-id="back-to-reality-the-random-slice">Back to reality: the random slice</h2>
+<p>Of course, people can’t actually join “Team Slightly North-East-Up”. We need to turn the needle directions back into two teams.</p>
+<p>Goemans and Williamson’s answer is delightfully simple: <strong>slice the space with a random flat sheet.</strong> Everyone whose needle points to one side of the sheet goes on one team; everyone on the other side goes on the other.</p>
+<p>Why does this work? Bickering pairs ended up with needles pointing far apart. The further apart two needles point, the more likely a random sheet will pass between them, putting them on opposite teams. Pairs who got along fine ended up with needles close together, so they’ll usually stay on the same side.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>The famous guarantee
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Goemans and Williamson proved that, on average, a random slice cuts at least <strong>87.8%</strong> as many connections as the ceiling. Since the ceiling is at least as good as the best possible split, the slice is guaranteed to be close to optimal, without ever finding the optimum.</p>
+</div>
+</div>
+<p>That was a landmark result. For decades, nobody has found an efficient method with a better guarantee, and there are good theoretical reasons to believe nobody can.</p>
+<p>In our example, we try 100 random slices and keep the best one. It comfortably clears the 87.8% bar.</p>
+</section>
+<section id="a-certificate-of-quality" class="level2">
+<h2 class="anchored" data-anchor-id="a-certificate-of-quality">A certificate of quality</h2>
+<p>There’s one more neat feature. When the solver finishes the relaxed problem, it also produces a set of numbers, one per person, called <strong>dual values</strong>. Add them all up and you get exactly the same ceiling, approached from the opposite direction.</p>
+<p>This acts like a <strong>certificate</strong>. Anyone can take those numbers and check, without re-solving anything, that no split could ever beat the ceiling. You don’t have to trust the solver; you can verify its homework.</p>
+</section>
+<section id="how-jaddle-solves-it" class="level2">
+<h2 class="anchored" data-anchor-id="how-jaddle-solves-it">How Jaddle solves it</h2>
+<p>The tricky bit of the relaxed problem is a rule saying the needle directions must “fit together” consistently. (In technical terms, a certain table of numbers must be <em>positive semidefinite</em>.) <a href="https://github.com/BrendanVR/Jaddle">Jaddle</a> handles this by taking small steps towards a better answer and, after each step, nudging the result back into the set of answers that fit together.</p>
+<p>The example writes the problem in <a href="https://www.cvxpy.org/">CVXPY</a>, a popular language for describing optimisation problems, and hands it to Jaddle to solve. We double-check Jaddle’s ceiling against SCS, another well-established solver, and they agree.</p>
+</section>
+<section id="the-takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="the-takeaway">The takeaway</h2>
+<p>When a problem is too hard to solve exactly, you don’t have to give up. You can:</p>
+<ol type="1">
+<li><strong>Relax</strong> it into an easier problem that gives you a ceiling;</li>
+<li><strong>Solve</strong> the easy version;</li>
+<li><strong>Round</strong> its answer back into a real solution;</li>
+<li><strong>Compare</strong> that solution to the ceiling to know exactly how good it is.</li>
+</ol>
+<p>This “relax and round” recipe shows up all over computer science, from scheduling to circuit design to clustering data. And it all started with a clever question: <em>what if the needles could point anywhere?</em></p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>semidefinite programming</category>
+  <category>graphs</category>
+  <guid>https://your-website-url.example.com/posts/max-cut/max-cut.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://your-website-url.example.com/posts/max-cut/max-cut-logo.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
+</channel>
+</rss>

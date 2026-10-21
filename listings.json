@@ -1,0 +1,13 @@
+[
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/portfolio/portfolio.html",
+      "/posts/battery-sizing/battery-sizing.html",
+      "/posts/robust-kalman/robust-kalman.html",
+      "/posts/mpc-fleet/mpc-fleet.html",
+      "/posts/fair-logistic-regression/fair-logistic-regression.html",
+      "/posts/max-cut/max-cut.html"
+    ]
+  }
+]

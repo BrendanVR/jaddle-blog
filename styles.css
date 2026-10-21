@@ -1,0 +1,75 @@
+:root {
+  --jaddle-blue: #2a5bd7;
+  --jaddle-teal: #1fa39a;
+  --jaddle-purple: #7a4fd1;
+  --jaddle-orange: #f08a24;
+  --jaddle-ribbon: linear-gradient(90deg, var(--jaddle-teal), var(--jaddle-purple), var(--jaddle-orange));
+}
+
+/* Logo in the navbar */
+.navbar-brand img {
+  height: 34px;
+  width: auto;
+  margin-right: 0.5rem;
+}
+
+/* Gradient ribbon under the navbar, echoing the logo */
+.navbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--jaddle-ribbon);
+}
+
+.navbar {
+  position: relative;
+}
+
+a {
+  color: var(--jaddle-blue);
+}
+
+/* Footer: ribbon strip on top, muted text, larger icons */
+.nav-footer {
+  border-top: 3px solid transparent;
+  border-image: var(--jaddle-ribbon) 1;
+  font-size: 0.9rem;
+}
+
+.nav-footer a .bi,
+.nav-footer a .fa,
+.nav-footer a i {
+  font-size: 1.25rem;
+}
+
+/* Hero block on the home page */
+.jaddle-hero {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+
+.jaddle-hero img {
+  max-width: 500px;
+  width: 150%;
+  height: auto;
+}
+
+.jaddle-hero .tagline {
+  color: #333;
+  font-size: 1.15rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.jaddle-hero .btn {
+  margin: 0.25rem;
+}
+
+/* Keep the navbar logo and title readable on phones */
+@media (max-width: 575.98px) {
+  .navbar-brand img {
+    height: 28px;
+  }
+}
