@@ -1,0 +1,52 @@
+---
+title: "Small Problems? Use Clarabel. Big Problems? Use Jaddle."
+subtitle: "Careful steps versus cheap steps, and how problem size decides the winner"
+description: "A guide to choosing between a careful, high-accuracy solver like Clarabel and a cheap-step GPU solver like Jaddle, based on problem size and how many problems you need to solve."
+author: "Brendan van Rooyen"
+date: 2026-10-21
+categories: [jaddle, optimisation, Clarabel, GPU]
+image: clarabel-vs-jaddle-logo.svg
+---
+
+Imagine you need to get across town. You could take one expensive sports car that makes the trip in a few careful, powerful moves. Or you could take a bus that makes lots of small, cheap stops, one after another. For one passenger, the sports car wins. For a thousand passengers, the bus is the only sensible choice.
+
+Optimisation solvers face the same choice. Some solvers make a small number of very careful, expensive steps. Others make many quick, cheap steps. Which one wins depends on the size of the problem, and it's a lesson I keep running into across my recent posts.
+
+## Two ways to climb a hill
+
+Finding the best answer to an optimisation problem is a bit like climbing a hill in thick fog. You can't see the top, but you can feel which way is uphill, and you keep moving that way.
+
+Some solvers, such as **Clarabel**, take careful steps. Each step is expensive: the solver works out a lot about the shape of the hill around it, which means solving a sizeable calculation. Because each step is so well-informed, you need only a few of them to reach the top.
+
+**Jaddle** takes a different approach. Its steps are cheap. Each one is a handful of quick sums, the sort of arithmetic a computer can repeat at great speed. You need many more steps to reach the top, but each one costs very little.
+
+## Why many cheap steps can win
+
+It sounds backwards. Surely a few smart steps should beat lots of dumb ones? Not always. Here's the catch: the cost of one careful step grows quickly as the problem gets bigger. Double the size of the problem and a careful step can cost several times as much. A cheap step grows much more gently. Eventually the careful solver spends so long on each step that the cheap solver, taking far more steps, still arrives first.
+
+There's a second benefit too. Cheap steps are easy to run in parallel. A graphics card, for example, is built to do thousands of simple sums at the same time. Lots of small, similar steps fit that kind of hardware beautifully.
+
+## The evidence
+
+I've tried this on several problems in the series, and the picture is consistent.
+
+**Small problems: the careful solver wins.** When I ran a [robust Kalman filter](../robust-kalman/robust-kalman.qmd), which tracks a moving object through noisy and sometimes wrong measurements, Clarabel finished in a fraction of a second. Jaddle took a few seconds. On a 30-node version of the network-splitting puzzle, the same story held: SCS was far quicker. The problems were small enough that the cheap steps didn't have enough work to add up.
+
+**Big problems: the cheap solver wins.** On a network with 1,000 nodes and about 150,000 links, which means a grid of a million numbers to arrange, SCS took about 126 seconds. Jaddle finished in about 18 seconds, roughly seven times faster, and both reached the same answer.
+
+**Many problems at once: the cheap solver wins.** When I controlled a [fleet of 1,000 small machines](../mpc-fleet/mpc-fleet.qmd), each one needed its own plan every moment. Solving them one at a time with SCS took about 420 microseconds per plan. Jaddle, solving all the plans together in one batch, took about 10 microseconds each, around forty times faster on a laptop graphics card. Even on an ordinary processor, the batched version was about three times faster than the one-at-a-time approach.
+
+## The honest bit
+
+This is not a magic trick, and the crossover is real. On a single small problem, the careful solver is usually the right choice, and I'd rather tell you that than sell you something you don't need. Jaddle's advantage shows up when problems are large, or when you have many of them to solve together. If you're solving one tiny problem a week, use the specialist tool.
+
+## A quick decision guide
+
+- **One small problem, needed occasionally:** use Clarabel.
+- **One large problem:** try Jaddle, and compare it against Clarabel on your own data.
+- **Many similar problems at once:** Jaddle, especially batched on a GPU.
+- **You need a high-accuracy answer fast on a tiny problem:** Clarabel. Its careful steps pay off when precision matters more than throughput.
+
+## The takeaway
+
+When you choose a solver, don't ask only which one is cleverest. Ask how big your problem is, how many you need to solve, and whether a crowd of cheap steps can beat a small team of expensive ones. For small problems, use Clarabel. For big ones, lots of cheap steps often win, and Jaddle is built around exactly that idea.

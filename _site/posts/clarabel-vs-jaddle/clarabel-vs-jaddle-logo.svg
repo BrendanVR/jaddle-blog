@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#f7f4ed"/>
+  <circle cx="512" cy="438" r="378" fill="#e6eff1" stroke="#e6dfd2" stroke-width="3"/>
+
+  <g fill="none" stroke="#9aabb6" stroke-linecap="round" stroke-width="4">
+    <path d="M180 676H844"/>
+    <path d="M235 680V706M789 680V706"/>
+  </g>
+
+  <path d="M223 666C296 610 342 549 407 492C446 457 475 420 512 354"
+        fill="none" stroke="#20374c" stroke-linecap="round" stroke-linejoin="round" stroke-width="12"/>
+  <g stroke="#20374c" stroke-width="7">
+    <rect x="228" y="590" width="86" height="76" rx="17" fill="#ef8068"/>
+    <rect x="329" y="508" width="86" height="76" rx="17" fill="#f2bb58"/>
+    <rect x="429" y="425" width="86" height="76" rx="17" fill="#ef8068"/>
+  </g>
+  <g fill="#fffdf8" stroke="#20374c" stroke-width="5">
+    <circle cx="271" cy="628" r="10"/>
+    <circle cx="372" cy="546" r="10"/>
+    <circle cx="472" cy="463" r="10"/>
+  </g>
+
+  <path d="M800 666C724 616 684 555 641 493C603 438 564 384 512 354"
+        fill="none" stroke="#52b49f" stroke-linecap="round" stroke-width="8"/>
+  <g fill="#52b49f" stroke="#fffdf8" stroke-width="4">
+    <circle cx="790" cy="659" r="13"/>
+    <circle cx="763" cy="636" r="12"/>
+    <circle cx="735" cy="610" r="12"/>
+    <circle cx="711" cy="582" r="11"/>
+    <circle cx="691" cy="551" r="11"/>
+    <circle cx="669" cy="521" r="10"/>
+    <circle cx="648" cy="491" r="10"/>
+    <circle cx="628" cy="463" r="9"/>
+    <circle cx="607" cy="434" r="9"/>
+    <circle cx="585" cy="408" r="8"/>
+    <circle cx="562" cy="383" r="8"/>
+    <circle cx="536" cy="364" r="7"/>
+  </g>
+
+  <g transform="translate(685 655)">
+    <rect x="0" y="0" width="124" height="82" rx="17" fill="#20374c"/>
+    <rect x="18" y="19" width="88" height="44" rx="9" fill="#d5e9e5"/>
+    <text x="62" y="48" fill="#20374c" font-family="Arial, sans-serif" font-size="17" font-weight="700" text-anchor="middle">GPU</text>
+    <g stroke="#20374c" stroke-linecap="round" stroke-width="5">
+      <path d="M19-8V2M43-8V2M67-8V2M91-8V2M19 80V90M43 80V90M67 80V90M91 80V90"/>
+    </g>
+  </g>
+
+  <circle cx="512" cy="326" r="39" fill="#f2bb58" stroke="#20374c" stroke-width="7"/>
+  <circle cx="512" cy="326" r="12" fill="#fffdf8"/>
+  <path d="M512 281V251M482 326H452M542 326H572" fill="none" stroke="#f2bb58" stroke-linecap="round" stroke-width="7"/>
+
+  <g font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="318" y="246" fill="#20374c" font-size="25" font-weight="700" letter-spacing="1.4">CLARABEL</text>
+    <text x="318" y="277" fill="#75899a" font-size="14" letter-spacing="2">FEW, CAREFUL STEPS</text>
+    <text x="704" y="246" fill="#20374c" font-size="25" font-weight="700" letter-spacing="1.4">JADDLE</text>
+    <text x="704" y="277" fill="#75899a" font-size="14" letter-spacing="2">MANY, CHEAP STEPS</text>
+    <text x="512" y="868" fill="#20374c" font-size="27" font-weight="700" letter-spacing="0.35">SMALL PROBLEMS? CLARABEL.</text>
+    <text x="512" y="908" fill="#20374c" font-size="27" font-weight="700" letter-spacing="0.35">BIG PROBLEMS? JADDLE.</text>
+    <text x="512" y="953" fill="#75899a" font-size="13" letter-spacing="1">JADDLE  /  OPTIMISATION STORIES</text>
+  </g>
+</svg>
