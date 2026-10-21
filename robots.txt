@@ -1,1 +1,1 @@
-Sitemap: https://yourname.github.io/jaddle-blog/sitemap.xml
+Sitemap: https://brendanvr.github.io/jaddle-blog/sitemap.xml

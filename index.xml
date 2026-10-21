@@ -6,15 +6,15 @@
       version="2.0">
 <channel>
 <title>Jaddle</title>
-<link>https://yourname.github.io/jaddle-blog/</link>
-<atom:link href="https://yourname.github.io/jaddle-blog/index.xml" rel="self" type="application/rss+xml"/>
+<link>https://brendanvr.github.io/jaddle-blog/</link>
+<atom:link href="https://brendanvr.github.io/jaddle-blog/index.xml" rel="self" type="application/rss+xml"/>
 <description>A blog built with Quarto</description>
 <generator>quarto-1.10.19</generator>
 <lastBuildDate>Tue, 20 Oct 2026 16:00:00 GMT</lastBuildDate>
 <item>
   <title>How Much Wobble Can You Handle?</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/portfolio/portfolio.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/portfolio/portfolio.html</link>
   <description><![CDATA[ 
 
 
@@ -100,14 +100,14 @@ Note
   <category>optimisation</category>
   <category>cone programming</category>
   <category>finance</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/portfolio/portfolio.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/portfolio/portfolio.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/portfolio/portfolio-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/portfolio/portfolio-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>The Goldilocks Battery</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/battery-sizing/battery-sizing.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/battery-sizing/battery-sizing.html</link>
   <description><![CDATA[ 
 
 
@@ -191,14 +191,14 @@ Note
   <category>optimisation</category>
   <category>linear programming</category>
   <category>energy</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/battery-sizing/battery-sizing.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/battery-sizing/battery-sizing.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/battery-sizing/battery-sizing-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/battery-sizing/battery-sizing-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>Ignoring the Fibbers</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/robust-kalman/robust-kalman.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/robust-kalman/robust-kalman.html</link>
   <description><![CDATA[ 
 
 
@@ -281,14 +281,14 @@ Note
   <category>optimisation</category>
   <category>estimation</category>
   <category>robust statistics</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/robust-kalman/robust-kalman.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/robust-kalman/robust-kalman.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/robust-kalman/robust-kalman-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/robust-kalman/robust-kalman-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>Herding a Thousand Springy Robots</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet.html</link>
   <description><![CDATA[ 
 
 
@@ -370,14 +370,14 @@ Note
   <category>optimisation</category>
   <category>control</category>
   <category>GPU</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/mpc-fleet/mpc-fleet-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>Teaching a Robot Banker to Play Fair</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression.html</link>
   <description><![CDATA[ 
 
 
@@ -478,14 +478,14 @@ Note
   <category>optimisation</category>
   <category>machine learning</category>
   <category>fairness</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/fair-logistic-regression/fair-logistic-regression-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>Max-Cut: The Art of Splitting a Room</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
-  <link>https://yourname.github.io/jaddle-blog/posts/max-cut/max-cut.html</link>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/max-cut/max-cut.html</link>
   <description><![CDATA[ 
 
 
@@ -566,9 +566,9 @@ Note
   <category>optimisation</category>
   <category>semidefinite programming</category>
   <category>graphs</category>
-  <guid>https://yourname.github.io/jaddle-blog/posts/max-cut/max-cut.html</guid>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/max-cut/max-cut.html</guid>
   <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
-  <media:content url="https://yourname.github.io/jaddle-blog/posts/max-cut/max-cut-logo.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/max-cut/max-cut-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 </channel>
 </rss>
