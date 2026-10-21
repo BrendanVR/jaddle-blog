@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">A Gentle Tour of Saddle Point Solvers</title>
+  <desc id="desc">Two players approach a saddle point from opposite directions, with their paths converging on the equilibrium.</desc>
+  <rect width="1024" height="1024" fill="#f7f4ed"/>
+  <circle cx="512" cy="440" r="378" fill="#e8edf3" stroke="#e4ded1" stroke-width="3"/>
+
+  <g fill="none" stroke-linecap="round">
+    <path d="M270 391 C350 337 422 337 512 405 C602 473 674 473 754 419" stroke="#9eacb9" stroke-width="5"/>
+    <path d="M270 465 C350 411 422 411 512 479 C602 547 674 547 754 493" stroke="#9eacb9" stroke-width="5"/>
+    <path d="M270 539 C350 485 422 485 512 553 C602 621 674 621 754 567" stroke="#9eacb9" stroke-width="5"/>
+    <path d="M342 321 C375 390 408 459 441 528 C467 583 490 628 512 659" stroke="#b2bdc7" stroke-width="4"/>
+    <path d="M422 292 C450 359 478 421 512 479 C546 421 574 359 602 292" stroke="#b2bdc7" stroke-width="4"/>
+    <path d="M602 292 C574 359 546 421 512 479 C478 537 450 599 422 666" stroke="#b2bdc7" stroke-width="4"/>
+    <path d="M682 321 C649 390 616 459 583 528 C557 583 534 628 512 659" stroke="#b2bdc7" stroke-width="4"/>
+
+    <path d="M330 322 C382 365 425 414 462 455 C483 479 497 492 512 500" stroke="#79b9cf" stroke-width="8" stroke-dasharray="2 18"/>
+    <path d="M694 322 C642 365 599 414 562 455 C541 479 527 492 512 500" stroke="#ee866f" stroke-width="8" stroke-dasharray="2 18"/>
+    <path d="M330 322 C390 355 450 390 512 500" stroke="#79b9cf" stroke-width="3" opacity=".7"/>
+    <path d="M694 322 C634 355 574 390 512 500" stroke="#ee866f" stroke-width="3" opacity=".7"/>
+  </g>
+
+  <g stroke="#23394d" stroke-width="5">
+    <circle cx="330" cy="322" r="30" fill="#79b9cf"/>
+    <circle cx="694" cy="322" r="30" fill="#ee866f"/>
+    <circle cx="512" cy="500" r="24" fill="#f5bb55"/>
+  </g>
+  <circle cx="330" cy="322" r="7" fill="#fffdf8"/>
+  <circle cx="694" cy="322" r="7" fill="#fffdf8"/>
+  <path d="M512 484 L528 500 L512 516 L496 500 Z" fill="#fffdf8" stroke="#23394d" stroke-width="4"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <text x="330" y="275" fill="#23394d" font-size="22" font-weight="700">PLAYER X</text>
+    <text x="694" y="275" fill="#23394d" font-size="22" font-weight="700">PLAYER Y</text>
+    <text x="512" y="562" fill="#536779" font-size="18" font-weight="700" letter-spacing="2">SADDLE POINT</text>
+    <text x="512" y="878" fill="#23394d" font-size="30" font-weight="700" letter-spacing=".4">SADDLE POINT SOLVERS</text>
+    <text x="512" y="930" fill="#778899" font-size="16" letter-spacing="1">JADDLE  /  OPTIMISATION STORIES</text>
+  </g>
+</svg>

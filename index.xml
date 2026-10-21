@@ -571,6 +571,74 @@ Note
   <media:content url="https://brendanvr.github.io/jaddle-blog/posts/max-cut/max-cut-logo.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
+  <title>A Gentle Tour of Saddle Point Solvers</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/saddle-point-solvers/saddle-point-solvers.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Many of the hardest problems in machine learning and engineering are optimisation problems. Sometimes there’s a catch: you want the cheapest design, but it must satisfy certain rules. Saddle point solvers are one of the most elegant ways to handle that catch, and the path to understanding them is a story about turning rules into a game.</p>
+<section id="step-1-turn-the-rules-into-a-fight" class="level2">
+<h2 class="anchored" data-anchor-id="step-1-turn-the-rules-into-a-fight">Step 1: Turn the rules into a fight</h2>
+<p>Suppose you want to minimise a cost, but you must obey a rule. A classic trick is to add a <em>penalty</em> for breaking the rule and let a second player decide how big that penalty should be.</p>
+<p>Call the first player X, who is trying to make the cost as small as possible. Call the second player Y, who is trying to make the penalty as large as possible whenever the rule is broken. Y is a bit of a troublemaker. If X breaks a rule, Y pounces and charges X for it.</p>
+<p>Mathematicians call this <em>dualising</em> the constraints. A problem that said, “minimise the cost, subject to the rules” becomes “X minimises, while Y maximises, a combined score.” The problem has gone from a minimisation to a <strong>min-max</strong>.</p>
+</section>
+<section id="step-2-meet-the-two-player-game" class="level2">
+<h2 class="anchored" data-anchor-id="step-2-meet-the-two-player-game">Step 2: Meet the two-player game</h2>
+<p>What we’ve built is a two-player zero-sum game. One player’s gain is exactly the other’s loss. X wants the score low, Y wants it high, and neither can simply walk away.</p>
+<p>Picture a tug-of-war on a seesaw. Every move X makes pushes the score up or down, and every move Y makes pushes it back. Neither player is trying to be nice.</p>
+</section>
+<section id="step-3-the-sweet-spot-is-a-nash-equilibrium" class="level2">
+<h2 class="anchored" data-anchor-id="step-3-the-sweet-spot-is-a-nash-equilibrium">Step 3: The sweet spot is a Nash equilibrium</h2>
+<p>In game theory, a <em>Nash equilibrium</em> is a situation where neither player can improve their outcome by changing their move alone. Each player is doing the best they can, given what the other is doing.</p>
+<p>In our min-max game, this equilibrium has a lovely geometric name: a <strong>saddle point</strong>. Think of a horse’s saddle. Walk along it from front to back and you’re climbing up; walk side to side and you’re going down. The saddle point is the spot that is the lowest in one direction and the highest in the other at the same time.</p>
+<p>That is exactly the answer to our original problem. The saddle point gives us the best design that also obeys the rules.</p>
+</section>
+<section id="step-4-let-the-players-learn-from-each-other" class="level2">
+<h2 class="anchored" data-anchor-id="step-4-let-the-players-learn-from-each-other">Step 4: Let the players learn from each other</h2>
+<p>How do we actually find the saddle point? One approach is to let both players learn as they play. Each player watches what the other has been doing and adjusts their strategy accordingly.</p>
+<p>The simplest version is called <em>gradient descent-ascent</em>. X takes a small step downhill on the score, Y takes a small step uphill, and both repeat. It is like two hikers feeling their way across a foggy landscape, one trying to get lower and the other trying to get higher, each reacting to where the other has just stepped.</p>
+</section>
+<section id="step-5-the-twist-and-the-magic" class="level2">
+<h2 class="anchored" data-anchor-id="step-5-the-twist-and-the-magic">Step 5: The twist (and the magic)</h2>
+<p>Here is the honest bit. In general, these learning dynamics <strong>don’t converge</strong>. In some games, the players chase each other in circles, or their steps grow larger and the game spirals away from the answer. Two stubborn players reacting instantly to each other are a recipe for wobbling.</p>
+<p>But then something rather magical happens. If you stop looking at each individual move and instead track the <strong>long-running average</strong> of what each player has done, the averages settle down. The wobbles cancel out, and the averaged strategies drift steadily towards the saddle point, the Nash equilibrium, the answer we were looking for.</p>
+</section>
+<section id="why-it-matters" class="level2">
+<h2 class="anchored" data-anchor-id="why-it-matters">Why it matters</h2>
+<p>Saddle point problems appear everywhere: training generative adversarial networks, robust control under uncertainty, fair resource allocation, and constrained learning in general. The core lesson is delightfully simple. When two opposing learners keep playing, don’t trust any single moment. Trust the average over time.</p>
+</section>
+<section id="from-idea-to-engine-jaddle" class="level2">
+<h2 class="anchored" data-anchor-id="from-idea-to-engine-jaddle">From Idea to Engine: Jaddle</h2>
+<p>Everything above is a story about ideas: turn the rules into a fight, find the calm point where neither player wants to move, let both learners adapt, and trust the long-run average. Turning those ideas into code that actually runs fast is what <strong>Jaddle</strong> is for.</p>
+<p>Jaddle (short for <em>JAX Saddle Point Solver</em>) is a library built on <a href="https://github.com/jax-ml/jax"><strong>JAX</strong></a>, Google’s numerical computing library. It takes the two-player picture seriously. You describe the game, one player minimising and one maximising, and Jaddle runs the learning dynamics for you.</p>
+<p>Here’s how the story maps onto the library:</p>
+<ul>
+<li><strong>Dualising the constraints</strong> becomes a function you write: the cost, plus the penalised constraints, as one combined score.</li>
+<li><strong>The two-player game</strong> is the object Jaddle solves. Each player’s update is computed from the gradient of that shared score, so you never hand-derive the learning rules.</li>
+<li><strong>The Nash equilibrium</strong> is the output you care about: the saddle point, the pair of strategies where neither player gains by moving alone.</li>
+<li><strong>Learning from the other player</strong> is the iterative update loop, with both players stepping at once and reacting to each other.</li>
+<li><strong>The long-running average</strong> is where the magic from the last section lives in practice.</li>
+</ul>
+<p>JAX makes this practical. Automatic differentiation supplies the gradients, jit compiles the update step so it runs at speed, and vmap lets many problems run side by side. The same code runs on CPU, GPU, or TPU without rewriting.</p>
+<p>So if the earlier sections gave you the intuition, Jaddle is the workshop where you put it to use. Try it on a small game first, watch the iterates wobble, then watch the averages settle. That moment is worth seeing for yourself.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>machine learning</category>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/saddle-point-solvers/saddle-point-solvers.html</guid>
+  <pubDate>Tue, 20 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/saddle-point-solvers/saddle-point-solvers-logo.svg" medium="image" type="image/svg+xml"/>
+</item>
+<item>
   <title>Small Problems? Use Clarabel. Big Problems? Use Jaddle.</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
   <link>https://brendanvr.github.io/jaddle-blog/posts/clarabel-vs-jaddle/clarabel-vs-jaddle.html</link>
