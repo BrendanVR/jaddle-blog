@@ -1,0 +1,20 @@
+---
+title: "Jaddle"
+listing:
+  contents: posts
+  feed: true
+  sort: "date desc"
+  type: default
+  categories: true
+  sort-ui: false
+  filter-ui: false
+page-layout: full
+title-block-banner: true
+---
+
+::: {.jaddle-hero}
+![Jaddle logo](jaddle_logo_full.png){fig-alt="Jaddle logo"}
+
+[GitHub](https://github.com/BrendanVR/Jaddle){.btn .btn-outline-primary role="button"} [LinkedIn](https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3){.btn .btn-outline-primary role="button"}
+:::
+

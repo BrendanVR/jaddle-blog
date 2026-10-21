@@ -1,0 +1,80 @@
+---
+title: "Max-Cut: The Art of Splitting a Room"
+subtitle: "How pretending a hard puzzle is easier gives you a near-perfect answer, and a promise about how good it is"
+description: "A gentle introduction to the Max-Cut problem and the Goemans–Williamson trick: relax, solve, then slice with a random sheet."
+author: "Brendan van Rooyen"
+image: max-cut-logo.png
+date: 2026-10-21
+categories: [jaddle, optimisation, semidefinite programming, graphs]
+---
+
+Imagine you're organising a quiz night with 30 people, and you need to split them into two teams. There's a complication: some pairs of people simply cannot stop bickering. You've drawn a map of every bickering pair. Your goal is to put as many of those pairs as possible on *opposite* teams, so they're too busy competing to argue with each other.
+
+This puzzle has a name, **Max-Cut**, and it is famously, stubbornly hard.
+
+## Drawing the problem
+
+Mathematicians picture this as a **graph**: a set of dots (the people) joined by lines (the bickering pairs). Splitting the people into two teams is like drawing a line across the page. Every connection that crosses your line counts as "cut", and you want to cut as many as possible.
+
+In our example there are 30 people, and each pair has a 30% chance of being a bickering pair. That gives a graph with 119 connections.
+
+## Why it's hard
+
+With 30 people, each person can go on one of two teams, so there are 2 × 2 × 2 × ... (thirty times) possible splits. That's over a **billion** options. Add one more person and the number doubles. Add ten more and it's a thousand times bigger.
+
+Checking every option is hopeless for big graphs, and as far as anyone knows, there's no clever shortcut that always finds the perfect answer quickly. Max-Cut belongs to a family of problems called **NP-hard**, which is computer-science speak for "nobody knows how to solve these fast, and many people suspect nobody ever will."
+
+So we settle for the next best thing: an answer that's provably *close* to perfect.
+
+## The trick: pretend it's easier
+
+In 1995, Michel Goemans and David Williamson came up with a beautiful idea.
+
+In the real problem, each person has to pick a team. You could picture each person holding a compass needle that must point either straight **north** (Team North) or straight **south** (Team South). Bickering pairs want their needles pointing in opposite directions.
+
+Now let's loosen the rules. Instead of only north or south, each person's needle can point in **any direction at all**, not just on a flat map but in a space with many dimensions. Bickering pairs still want their needles to point as far apart as possible, but now there's a whole sphere of in-between options.
+
+This loosened version is called a **relaxation**, and it has two wonderful properties:
+
+1. **It's much easier to solve.** The relaxed problem is a type of puzzle called a *semidefinite program*, which, unlike the original, can be solved efficiently and exactly.
+2. **Its answer is a ceiling.** Since every real split is also allowed in the relaxed version (north and south are still valid directions), the relaxed problem can only do better than or equal to the real one. So its score tells us: *no split can possibly cut more than this.*
+
+## Back to reality: the random slice
+
+Of course, people can't actually join "Team Slightly North-East-Up". We need to turn the needle directions back into two teams.
+
+Goemans and Williamson's answer is delightfully simple: **slice the space with a random flat sheet.** Everyone whose needle points to one side of the sheet goes on one team; everyone on the other side goes on the other.
+
+Why does this work? Bickering pairs ended up with needles pointing far apart. The further apart two needles point, the more likely a random sheet will pass between them, putting them on opposite teams. Pairs who got along fine ended up with needles close together, so they'll usually stay on the same side.
+
+::: {.callout-tip}
+## The famous guarantee
+Goemans and Williamson proved that, on average, a random slice cuts at least **87.8%** as many connections as the ceiling. Since the ceiling is at least as good as the best possible split, the slice is guaranteed to be close to optimal, without ever finding the optimum.
+:::
+
+That was a landmark result. For decades, nobody has found an efficient method with a better guarantee, and there are good theoretical reasons to believe nobody can.
+
+In our example, we try 100 random slices and keep the best one. It comfortably clears the 87.8% bar.
+
+## A certificate of quality
+
+There's one more neat feature. When the solver finishes the relaxed problem, it also produces a set of numbers, one per person, called **dual values**. Add them all up and you get exactly the same ceiling, approached from the opposite direction.
+
+This acts like a **certificate**. Anyone can take those numbers and check, without re-solving anything, that no split could ever beat the ceiling. You don't have to trust the solver; you can verify its homework.
+
+## How Jaddle solves it
+
+The tricky bit of the relaxed problem is a rule saying the needle directions must "fit together" consistently. (In technical terms, a certain table of numbers must be *positive semidefinite*.) [Jaddle](https://github.com/BrendanVR/Jaddle) handles this by taking small steps towards a better answer and, after each step, nudging the result back into the set of answers that fit together.
+
+The example writes the problem in [CVXPY](https://www.cvxpy.org/), a popular language for describing optimisation problems, and hands it to Jaddle to solve. We double-check Jaddle's ceiling against SCS, another well-established solver, and they agree.
+
+## The takeaway
+
+When a problem is too hard to solve exactly, you don't have to give up. You can:
+
+1. **Relax** it into an easier problem that gives you a ceiling;
+2. **Solve** the easy version;
+3. **Round** its answer back into a real solution;
+4. **Compare** that solution to the ceiling to know exactly how good it is.
+
+This "relax and round" recipe shows up all over computer science, from scheduling to circuit design to clustering data. And it all started with a clever question: *what if the needles could point anywhere?*

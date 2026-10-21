@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://your-website-url.example.com/about.html</loc>
+    <lastmod>2026-10-20T23:19:53.893Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/fair-logistic-regression/fair-logistic-regression.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/robust-kalman/robust-kalman.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/portfolio/portfolio.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/index.html</loc>
+    <lastmod>2026-10-21T04:33:43.797Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/battery-sizing/battery-sizing.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/mpc-fleet/mpc-fleet.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+  <url>
+    <loc>https://your-website-url.example.com/posts/max-cut/max-cut.html</loc>
+    <lastmod>2026-10-21T04:29:41.747Z</lastmod>
+  </url>
+</urlset>

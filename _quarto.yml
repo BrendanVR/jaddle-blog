@@ -1,0 +1,37 @@
+project:
+  type: website
+
+website:
+  description: "A blog built with Quarto"
+  site-url: https://your-website-url.example.com # you must change this appropriately for RSS feeds to work properly
+  title: "Jaddle"
+  favicon: jaddle_logo_no_text_square.png
+  open-graph: true
+  twitter-card:
+    image: jaddle_logo_full.png
+  navbar:
+    logo: jaddle_logo_no_text_square.png
+    logo-alt: "Jaddle"
+    right:
+      - about.qmd
+      - icon: github
+        href: https://github.com/BrendanVR/Jaddle
+      - icon: linkedin
+        href: https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3
+  page-footer:
+    left: "Jaddle: saddle up with JAX"
+    center: "© Brendan Van Rooyen"
+    right:
+      - icon: github
+        href: https://github.com/BrendanVR/Jaddle
+      - icon: linkedin
+        href: https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+    css: styles.css
+
+
+

@@ -1,0 +1,98 @@
+---
+title: "Teaching a Robot Banker to Play Fair"
+subtitle: "What happens when a computer learns from a biased past, and how a single rule can nudge it back"
+description: "A friendly tour of fairness-constrained logistic regression: why hiding the sensitive attribute isn't enough, and how to measure the price of fairness."
+author: "Brendan van Rooyen"
+image: fair-logistic-regression-logo.png
+date: 2026-10-21
+categories: [jaddle, optimisation, machine learning, fairness]
+---
+
+Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say "yes" or "no". To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: *learn to do what they did.*
+
+That sounds sensible. But there is a catch. What if the old decisions were unfair?
+
+## A world with a thumb on the scale
+
+In this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we'll call **Group A** and **Group B**. About three in ten applicants belong to Group B.
+
+Every applicant has a few "skill" scores, things like income stability or repayment history. Here is the important part: **the skills are spread out in exactly the same way in both groups.** Nobody in Group B is any less capable, on average, than anyone in Group A.
+
+In a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.
+
+So the pile of old decisions, the one we're asking the computer to learn from, quietly contains a bias.
+
+## "Just don't tell it the group!"
+
+The first idea most people have is simple: don't show the computer which group each applicant is in. If it can't see the group, surely it can't discriminate?
+
+Sadly, it isn't that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call **proxies**: clues that let you guess the group without being told.
+
+A computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of "postcode" were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a *negative* weight on those postcode-like features and approves Group B applicants far less often than Group A.
+
+::: {.callout-note}
+## The lesson
+Hiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own.
+:::
+
+## How the robot banker thinks
+
+The model we use is called **logistic regression**, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:
+
+- Each feature (each skill score, each postcode detail) earns or loses the applicant some points.
+- The points are added up into a single score.
+- If the score is above zero, the answer is "yes". Below zero, "no".
+
+"Learning" just means adjusting how many points each feature is worth until the model's answers match the training data as closely as possible. Finding the best point values is an **optimisation problem**: a search for the settings that make some measure of error as small as it can be.
+
+## Adding a fairness rule
+
+To push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is **demographic parity**: both groups should be approved at the same rate.
+
+There is a small snag. Approval rates jump in steps: one applicant flips from "no" to "yes" and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:
+
+> The model's *average score* shouldn't depend on which group you're in.
+
+We also add a dial, which we'll call the **fairness bound**. Turn the dial all the way up and there's no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise.
+
+## What we found
+
+We trained two models: one with no fairness rule, and one with the dial at zero.
+
+The fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:
+
+- Measured against the **biased historical decisions**, the fair model looks *worse*. Of course it does: it is refusing to copy the bias.
+- Measured against the **fair decisions** (the ones that depend only on skill), the fair model looks *better*.
+
+In real life we would never get to see those "fair decisions". We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then "accuracy against the past" can be a misleading report card.
+
+## The whole trade-off in one go
+
+One fair model and one unfair model only tell part of the story. What about all the settings in between?
+
+We picked 40 different positions for the fairness dial and asked [Jaddle](https://github.com/BrendanVR/Jaddle), the optimisation library this example is built with, to train all 40 models **at the same time**, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.
+
+Reading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up.
+
+## The price of fairness
+
+Here is my favourite part. When an optimiser obeys a rule, it can also tell you **how much that rule is costing**. Mathematicians call this a *dual variable* or *shadow price*. Think of it as a receipt that comes with each answer, saying: "if you tightened this rule by one more notch, the training error would go up by this much."
+
+For our fairness rule, that receipt is a **price of fairness**. We found that:
+
+- When the dial is loose enough that the rule isn't actually stopping anything, the price is zero. The rule is just along for the ride.
+- As the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.
+
+That's useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is "worth it", you can see the actual exchange rate and talk about it openly.
+
+## A few footnotes
+
+Fairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.
+
+- **Demographic parity is only one definition of fairness.** Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.
+- **Our world is made up.** Real data is messier, and real bias is rarely a single fixed penalty.
+- **The rule we used is a stand-in.** Making average scores equal tends to bring approval rates together, but it doesn't guarantee they match exactly.
+
+## The takeaway
+
+A model trained to imitate the past will happily imitate the past's mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open.

@@ -1,0 +1,32 @@
+{
+  "index.qmd": {
+    "index.html": "2065dbe3"
+  },
+  "posts/welcome/index.qmd": {
+    "index.html": "d4f331b1"
+  },
+  "posts/post-with-code/index.qmd": {
+    "index.html": "3c5c81dd"
+  },
+  "about.qmd": {
+    "about.html": "d9d8cd0a"
+  },
+  "posts/portfolio/portfolio.qmd": {
+    "portfolio.html": "91418370"
+  },
+  "posts/battery-sizing/battery-sizing.qmd": {
+    "battery-sizing.html": "a80291e5"
+  },
+  "posts/robust-kalman/robust-kalman.qmd": {
+    "robust-kalman.html": "5d419616"
+  },
+  "posts/mpc-fleet/mpc-fleet.qmd": {
+    "mpc-fleet.html": "751ea6e9"
+  },
+  "posts/fair-logistic-regression/fair-logistic-regression.qmd": {
+    "fair-logistic-regression.html": "35237243"
+  },
+  "posts/max-cut/max-cut.qmd": {
+    "max-cut.html": "0841226d"
+  }
+}

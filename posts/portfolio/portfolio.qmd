@@ -1,0 +1,81 @@
+---
+title: "How Much Wobble Can You Handle?"
+subtitle: "Building a risk-limited investment portfolio, one ice-cream cone at a time"
+description: "A friendly look at portfolio optimisation: shared risk, personal risk, the efficient frontier, and why the shape of a cone matters."
+author: "Brendan van Rooyen"
+image: portfolio-logo.png
+date: 2026-10-21
+categories: [jaddle, optimisation, cone programming, finance]
+---
+
+Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?
+
+If you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that's like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.
+
+This example explores that trade-off.
+
+::: {.callout-note}
+The data in this example is entirely made up. Nothing here is financial advice!
+:::
+
+## The rules of the game
+
+We need to decide what **fraction** of our money goes into each of the 500 assets. The rules are:
+
+- The fractions must add up to 100%. We invest all the money, no more and no less.
+- No fraction can be negative. In finance-speak, the portfolio is *long-only*: we can't bet against an asset or borrow to invest.
+- The portfolio's **volatility** (how much it's expected to wobble) must stay below a limit we choose.
+
+Within those rules, we want the highest **expected return**.
+
+## Two kinds of wobble
+
+To measure wobble, we use what's called a **factor model**. It says each asset's ups and downs come from two sources.
+
+**Shared wobble.** Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or *factors*, and each asset reacts to them in its own way.
+
+**Personal wobble.** Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.
+
+This distinction matters because the two kinds of wobble behave differently when you combine assets:
+
+- **Personal wobbles tend to cancel out.** If you own lots of different things, one asset's bad day is often balanced by another's good day. This is the magic of **diversification**.
+- **Shared wobbles don't cancel.** If all your assets love sunny weather, owning more of them doesn't protect you from rain.
+
+## Where the ice-cream cone comes in
+
+To work out a portfolio's total wobble, you collect all its exposures, to each shared factor and to each asset's personal risk, and measure their combined size, the way you'd measure the length of an arrow from its parts.
+
+The rule "this combined size must be below the limit" has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you'd get a shape like a cone. It even has a nickname among optimisation folk: the **ice-cream cone**. Its formal name is the *second-order cone*.
+
+Why does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like "this plus that must be at most ten". A cone has a curved, rounded surface, so those solvers can't take it directly. [Jaddle](https://github.com/BrendanVR/Jaddle) can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it's wandered out.
+
+## Tracing the efficient frontier
+
+Rather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.
+
+If you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the **efficient frontier**. Every point on it is a portfolio where you can't get more expected return without accepting more risk. Any portfolio *below* the curve is leaving money on the table.
+
+Two things make tracing this curve quicker:
+
+- **Warm starts.** Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn't change the best portfolio completely, so starting nearby saves a lot of work.
+- **Reusing the setup.** The problem is described once, and only the wobble limit changes between solves.
+
+## The slope tells a story
+
+Every time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: **"If I allowed a little more wobble, how much extra return would I get?"**
+
+That's precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you're being very cautious, accepting a bit more risk buys you a healthy boost in return. When you're already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much.
+
+## What the portfolios look like
+
+At the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.
+
+As the limit loosens, the portfolio **concentrates** on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites.
+
+## Checking our work
+
+To make sure Jaddle's answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves.
+
+## The takeaway
+
+Investing well isn't just about picking winners. It's about understanding how your choices wobble *together*. By describing risk as the size of an arrow, and using a solver that's comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy.

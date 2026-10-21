@@ -1,0 +1,16 @@
+---
+title: "About"
+image: jaddle_logo_no_text_square.png
+about:
+  template: jolla
+  links:
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3
+    - icon: github
+      text: Github
+      href: https://github.com/BrendanVR/Jaddle
+
+---
+
+This is a blog about Jaddle, a project I'm working on.

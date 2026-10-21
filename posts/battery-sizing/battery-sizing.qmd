@@ -1,0 +1,90 @@
+---
+title: "The Goldilocks Battery"
+subtitle: "Not too big, not too small: using gradient descent to size a home battery"
+description: "How to choose the right battery for a solar-powered site by solving many small daily plans at once and letting them tell you which way to grow."
+author: "Brendan van Rooyen"
+image: battery-sizing-logo.png
+date: 2026-10-21
+categories: [jaddle, optimisation, linear programming, energy]
+---
+
+Picture a building with solar panels on the roof. At midday the sun is blazing and the panels are churning out electricity. In the evening, when everyone gets home and turns on the oven, the TV and the kettle, the sun has gone down and the power has to come from the grid, at the most expensive time of day.
+
+The obvious fix is a battery: soak up cheap or free energy when it's plentiful and use it later when it's pricey. But batteries aren't free. Buy one that's too small and you miss out on savings. Buy one that's too big and you've paid for capacity you never use.
+
+So how big should it be? Like Goldilocks, we're looking for the one that's *just right*.
+
+## Two questions hiding inside one
+
+It turns out "how big a battery should I buy?" contains a second question tucked inside it: **"how would I actually use it?"**
+
+You can't judge a battery without knowing how it would be run. A big battery used badly might save less than a small battery used cleverly. So, to size the battery, we need to know how to operate it well on every kind of day it might face.
+
+That gives us two layers:
+
+1. **The operating problem** (every day): given a battery of a certain size, when should it charge and when should it discharge to make the electricity bill as small as possible?
+2. **The sizing problem** (once): given that we'll always run the battery as well as we can, which size gives the lowest total cost, counting both the battery's price and the bills?
+
+## One day at a time
+
+We split each day into 24 hours. Each hour has:
+
+- an **electricity price**, which peaks in the morning and, even more, in the evening;
+- a **demand**, the amount of power the building needs, which follows a similar pattern;
+- some **solar output**, which peaks around lunchtime and depends on how cloudy the day is.
+
+The battery has two numbers that describe its size, and it's worth knowing the difference:
+
+- **Energy capacity** (in kilowatt-hours) is how much it can *store*. Think of it as the size of a water tank.
+- **Power rating** (in kilowatts) is how fast it can *charge or discharge*. Think of it as the width of the tap.
+
+A huge tank with a tiny tap can't empty fast enough to cover the evening rush. A wide tap on a tiny tank runs dry in minutes. You need a sensible match.
+
+Planning one day's battery use, given the prices, the demand, the sunshine and the battery's size, is a classic **linear program**: a puzzle where you choose a bunch of numbers (how much to charge, discharge and buy each hour) to minimise a cost, while obeying straightforward rules like "you can't store more than the tank holds" and "the lights must stay on". The battery also has to end the day as full as it started, so it can't cheat by borrowing from tomorrow.
+
+## Thirty-two days of weather
+
+One day isn't enough to make a decision. Some days are sunny, some are gloomy, and prices bounce around. So we generate **32 sample days**, each with its own mix of prices, demand and sunshine, and judge each battery size by its average performance across all of them.
+
+That means every time we want to test a battery size, we have to solve 32 operating puzzles. That could get slow.
+
+## The bulk-discount twist
+
+There's one more wrinkle, and it's the reason this example exists. Batteries enjoy **economies of scale**: a bigger battery costs more, but not proportionally more. In our model, doubling the battery's size makes it about 1.74 times as expensive, not twice as expensive.
+
+That sounds like good news for your wallet, and it is. But it's bad news for the maths. If cost were perfectly proportional to size, the whole thing (sizing plus all 32 days) could be bundled into one giant linear program and solved directly, very quickly. The bulk discount bends the cost curve, and that bend breaks the neat linear structure. We need a different approach.
+
+## Feeling for the slope
+
+Here is the trick. Imagine you're standing on a hillside in thick fog, and you want to reach the bottom of the valley. You can't see the bottom, but you *can* feel which way the ground slopes under your feet. So you take a step downhill, feel again, take another step, and so on. This is called **gradient descent**, and it's one of the most widely used ideas in all of computing.
+
+To use it, we need the slope: if we made the battery a tiny bit bigger, would the total cost go up or down, and by how much?
+
+The lovely part is that the operating puzzles hand us this information **for free**. When a linear program finishes, its solution comes with extra numbers that say how much the best possible cost would change if each limit were loosened a little. One of those limits is "the battery can't hold more than its capacity", so the solver already knows how much a slightly bigger battery would have saved on that day. We don't have to do any extra work to get the slope.
+
+[Jaddle](https://github.com/BrendanVR/Jaddle) solves all 32 daily puzzles **at once**, in a single batch, collects the slopes, and combines them with the slope of the battery's price. Then we take a step downhill and repeat. Forty steps later, we've arrived.
+
+## The answer
+
+Across our 32 sample days:
+
+- With **no battery**, the site spends about **$6.02 per day** on electricity.
+- With the battery that gradient descent found, the total daily cost (battery *and* bills) drops to about **$3.83 per day**.
+
+The best battery stores roughly **14 to 15 kilowatt-hours**.
+
+## Did we find the real bottom?
+
+Because of that bulk-discount bend, the landscape isn't a perfectly smooth bowl. Gradient descent always walks downhill, but it can get stuck in a small dip that isn't the deepest point. And there's no exact solver for this problem we can check against.
+
+So we did the next best thing: we started again from a completely different place. The first run began with a tiny battery and grew it. The second began with an absurdly oversized battery and shrank it. Both hikers walked down through the fog and met in the same valley. Their costs agreed to within 0.03%.
+
+Their battery sizes agreed slightly less closely (about 14.3 versus 14.6 kilowatt-hours). That's not a problem; it tells us the valley floor is wide and flat. Near the best size, a little bigger or a little smaller makes almost no difference to the cost. That's handy in real life, where batteries only come in certain sizes anyway.
+
+## What the battery actually does
+
+If you look at the plan for the sunniest day, the battery behaves just as you'd hope. It fills up around midday when the solar panels are producing more than the building needs, then drains during the expensive evening peak, cutting the amount of power bought from the grid when prices are highest.
+
+## The takeaway
+
+Big decisions often depend on lots of small ones. Here, a one-off purchase depends on thousands of hour-by-hour choices across many different days. By solving all the small problems together, and using the slopes they give away for free, we can steer the big decision step by step until it's just right. Not too big, not too small.
