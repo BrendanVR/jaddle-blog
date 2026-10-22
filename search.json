@@ -63,200 +63,130 @@
     "text": "From Idea to Engine: Jaddle\nEverything above is a story about ideas: turn the rules into a fight, find the calm point where neither player wants to move, let both learners adapt, and trust the long-run average. Turning those ideas into code that actually runs fast is what Jaddle is for.\nJaddle (short for JAX Saddle Point Solver) is a library built on JAX, Google’s numerical computing library. It takes the two-player picture seriously. You describe the game, one player minimising and one maximising, and Jaddle runs the learning dynamics for you.\nHere’s how the story maps onto the library:\n\nDualising the constraints becomes a function you write: the cost, plus the penalised constraints, as one combined score.\nThe two-player game is the object Jaddle solves. Each player’s update is computed from the gradient of that shared score, so you never hand-derive the learning rules.\nThe Nash equilibrium is the output you care about: the saddle point, the pair of strategies where neither player gains by moving alone.\nLearning from the other player is the iterative update loop, with both players stepping at once and reacting to each other.\nThe long-running average is where the magic from the last section lives in practice.\n\nJAX makes this practical. Automatic differentiation supplies the gradients, jit compiles the update step so it runs at speed, and vmap lets many problems run side by side. The same code runs on CPU, GPU, or TPU without rewriting.\nSo if the earlier sections gave you the intuition, Jaddle is the workshop where you put it to use. Try it on a small game first, watch the iterates wobble, then watch the averages settle. That moment is worth seeing for yourself."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html",
-    "title": "Teaching a Robot Banker to Play Fair",
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html",
+    "title": "How Jaddle Works",
     "section": "",
-    "text": "Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say “yes” or “no”. To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: learn to do what they did.\nThat sounds sensible. But there is a catch. What if the old decisions were unfair?"
+    "text": "WarningWarning: nerd content ahead!\n\n\n\nThis article is a bit nerdy. There are equations, Greek letters and at least one joke about horse saddles. You don’t need to understand every symbol: the words around each equation say what it means in plain language. If an equation looks scary, read the sentence after it and keep going.\nYou have been warned. Be prepared!"
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "A world with a thumb on the scale",
-    "text": "A world with a thumb on the scale\nIn this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we’ll call Group A and Group B. About three in ten applicants belong to Group B.\nEvery applicant has a few “skill” scores, things like income stability or repayment history. Here is the important part: the skills are spread out in exactly the same way in both groups. Nobody in Group B is any less capable, on average, than anyone in Group A.\nIn a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.\nSo the pile of old decisions, the one we’re asking the computer to learn from, quietly contains a bias."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#what-problem-are-we-solving",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#what-problem-are-we-solving",
+    "title": "How Jaddle Works",
+    "section": "What problem are we solving?",
+    "text": "What problem are we solving?\nJaddle is a program that solves optimisation problems. That means: pick some numbers so that something is as small (or as big) as possible, while following a set of rules.\nHere is a tiny one. You are baking. Flour costs $2 a kilo, and your recipe needs at least 3 kilos. How much flour should you buy to spend as little as possible?\nYou already know the answer: buy exactly 3 kilos and spend $6. Easy.\nNow imagine an airline planning thousands of flights, a power company deciding which power stations to switch on, or a delivery company routing hundreds of trucks. These problems have millions of numbers to choose and millions of rules to follow. Nobody can eyeball those. We need a recipe that a computer can follow, step by step, and that recipe is what this article is about.\nMathematicians write this kind of problem (a linear program) like this:\n\\[\n\\text{minimise } c^\\top x \\quad \\text{such that} \\quad Ax \\le b, \\quad \\ell \\le x \\le u\n\\]\nIn words:\n\n\\(x\\) is the list of numbers we get to choose (how much of each thing to buy).\n\\(c\\) is the list of prices, and \\(c^\\top x = c_1 x_1 + c_2 x_2 + \\dots\\) is the total cost.\nEach row of \\(Ax \\le b\\) is one rule (“you need at least this much of that”).\n\\(\\ell \\le x \\le u\\) are simple limits on each number, like “you can’t buy a negative amount of flour”.\n\nFor the flour problem there is just one number, \\(x\\) = kilos of flour. The cost is \\(2x\\), the rule is \\(x \\ge 3\\) (which we can write as \\(3 - x \\le 0\\)) and the limit is \\(x \\ge 0\\).\nJaddle solves these problems in five big ideas. Let’s go through them one at a time."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "“Just don’t tell it the group!”",
-    "text": "“Just don’t tell it the group!”\nThe first idea most people have is simple: don’t show the computer which group each applicant is in. If it can’t see the group, surely it can’t discriminate?\nSadly, it isn’t that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call proxies: clues that let you guess the group without being told.\nA computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of “postcode” were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a negative weight on those postcode-like features and approves Group B applicants far less often than Group A.\n\n\n\n\n\n\nNoteThe lesson\n\n\n\nHiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#turn-rules-into-fines-dualising-and-the-lagrangian",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#turn-rules-into-fines-dualising-and-the-lagrangian",
+    "title": "How Jaddle Works",
+    "section": "1. Turn rules into fines (dualising and the Lagrangian)",
+    "text": "1. Turn rules into fines (dualising and the Lagrangian)\nRules are awkward for computers. They act like invisible walls, and walls are hard to deal with when there are millions of them.\nSo we play a trick: we replace every rule with a fine.\nImagine a referee who watches the shopper. For each rule, the referee chooses a fine, \\(y\\), to charge for every kilo you are short. If you buy \\(x\\) kilos you are \\(3 - x\\) kilos short, so the fine is \\(y \\times (3 - x)\\). Your total bill becomes\n\\[\nL(x, y) = \\underbrace{2x}_{\\text{cost of flour}} + \\underbrace{y\\,(3 - x)}_{\\text{fine for being short}}\n\\]\nThis bill has a famous name: the Lagrangian, after Joseph-Louis Lagrange, a mathematician from the 1700s. For any linear program it looks like this:\n\\[\nL(x, y) = c^\\top x + y^\\top (A x - b), \\qquad y \\ge 0\n\\]\nThere is one fine for each rule, and the list of fines \\(y\\) is called the dual variables. (The shopper’s numbers \\(x\\) are the primal variables.) Swapping rules for fines like this is called dualising the constraints. Fines can’t be negative, because a referee doesn’t pay you for breaking a rule. If you have extra flour, \\(3 - x\\) is negative, and the referee’s best move is to set the fine to zero. (Rules of the form “exactly equal to” also work. Their fines are allowed to be negative.)\n\nA game with two players\nNow we have a game:\n\nThe shopper chooses \\(x\\) and wants the bill \\(L\\) to be as small as possible.\nThe referee chooses \\(y\\) and wants the bill \\(L\\) to be as big as possible.\n\n\\[\n\\min_{x} \\; \\max_{y \\ge 0} \\; L(x, y)\n\\]\nWhy does this game give the same answer as the original problem? If the shopper breaks the rule, the referee can make the fine enormous, so breaking the rule is a terrible idea. If the shopper follows the rule, the fine does nothing. The shopper’s best move is to follow the rules and spend as little as possible, which is exactly the original problem. The difference is that there are no walls any more, just a bill to push down and fines to push up.\n\n\nThe saddle point\nFor the flour problem the game ends at \\(x = 3\\) and \\(y = 2\\). Check it:\n\nIf the referee sets \\(y = 2\\), the bill is \\(2x + 2(3 - x) = 6\\) whatever \\(x\\) is. The shopper can’t do any better by changing \\(x\\).\nIf the shopper buys \\(x = 3\\), the bill is \\(6 + y \\times 0 = 6\\) whatever \\(y\\) is. The referee can’t do any better by changing \\(y\\).\n\nNeither player wants to move. This spot is called a saddle point, because the bill looks like a horse saddle. Along the horse’s back the saddle curves up on both sides, so the middle is the lowest point (what the shopper wants). Across the horse it curves down on both sides, so the middle is the highest point (what the referee wants). The middle of a saddle is the lowest point one way and the highest point the other way.\nThat is where the name comes from: Jaddle = JAX + saddle.\n\n\n\n\n\n\nTipBonus: fines are prices\n\n\n\nThe answer \\(y = 2\\) means something. If your recipe needed one more kilo, your cost would go up by exactly $2. The referee’s fine tells you how much each rule costs you. On big problems this is very useful: it tells a company which of its rules are the expensive ones."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "How the robot banker thinks",
-    "text": "How the robot banker thinks\nThe model we use is called logistic regression, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:\n\nEach feature (each skill score, each postcode detail) earns or loses the applicant some points.\nThe points are added up into a single score.\nIf the score is above zero, the answer is “yes”. Below zero, “no”.\n\n“Learning” just means adjusting how many points each feature is worth until the model’s answers match the training data as closely as possible. Finding the best point values is an optimisation problem: a search for the settings that make some measure of error as small as it can be."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent",
+    "title": "How Jaddle Works",
+    "section": "2. Take turns walking downhill and uphill (alternating gradient descent–ascent)",
+    "text": "2. Take turns walking downhill and uphill (alternating gradient descent–ascent)\nHow do the shopper and the referee find the saddle point? They feel which way the ground slopes and take small steps.\nThe gradient is the slope: it says which direction is uphill and how steep it is. For the flour bill the slopes are\n\\[\n\\frac{\\partial L}{\\partial x} = 2 - y, \\qquad \\frac{\\partial L}{\\partial y} = 3 - x\n\\]\nThese say something sensible:\n\nIf the fine \\(y\\) is less than $2, flour costs more than the fine it saves you, so the shopper wants to buy less.\nIf \\(x\\) is less than 3, the shopper is short of flour, so the referee wants to make the fine bigger.\n\nFor any linear program the slopes are \\(c + A^\\top y\\) for the shopper and \\(Ax - b\\) for the referee.\nThe shopper walks downhill (makes the bill smaller) and the referee walks uphill (makes the bill bigger). They take turns, and the referee always reacts to the shopper’s newest choice. That is why it is called alternating:\n\\[\nx_{\\text{new}} = \\text{clip}\\Big(x - \\tau\\,\\big(c + A^\\top y\\big)\\Big)\n\\]\n\\[\ny_{\\text{new}} = \\max\\Big(0,\\; y + \\sigma\\,\\big(A x_{\\text{new}} - b\\big)\\Big)\n\\]\nHere \\(\\tau\\) (tau) and \\(\\sigma\\) (sigma) are step sizes: how far each player moves per turn. “clip” pushes \\(x\\) back inside its limits, and \\(\\max(0, \\cdot)\\) stops fines going negative.\nEach turn only needs two multiplications by the big table of rules: one by \\(A\\) and one by its flipped version \\(A^\\top\\). That is cheap even when \\(A\\) has millions of rows, and graphics cards (GPUs) are very good at it. Methods that only use slopes like this are called first-order methods.\n\nTry it\nDrag the sliders and watch the shopper and referee move. Each blue dot is one turn. Both start at zero.\n\nfunction simulate(eta, n) {\n  let x = 0, y = 0, sx = 0, sy = 0;\n  const pts = [];\n  for (let i = 1; i &lt;= n; i++) {\n    x = Math.max(0, x - eta * (2 - y));   // shopper walks downhill\n    y = Math.max(0, y + eta * (3 - x));   // referee walks uphill\n    sx += x; sy += y;\n    pts.push({i, x, y, ax: sx / i, ay: sy / i});\n  }\n  return pts;\n}\n\n\n\n\n\n\n\nfunction saddlePlot(pts, showAvg) {\n  const marks = [\n    Plot.line(pts, {x: \"x\", y: \"y\", stroke: \"#4c78a8\", strokeOpacity: 0.45}),\n    Plot.dot(pts, {x: \"x\", y: \"y\", r: 2.5, fill: \"#4c78a8\"})\n  ];\n  if (showAvg) {\n    marks.push(Plot.line(pts, {x: \"ax\", y: \"ay\", stroke: \"#f58518\", strokeWidth: 2.5}));\n    marks.push(Plot.dot(pts.slice(-1), {x: \"ax\", y: \"ay\", r: 6, fill: \"#f58518\"}));\n  }\n  marks.push(Plot.dot([{x: 3, y: 2}], {x: \"x\", y: \"y\", r: 7, fill: \"#e45756\", stroke: \"white\"}));\n  marks.push(Plot.text([{x: 3, y: 2}], {x: \"x\", y: \"y\", text: d =&gt; \"saddle point (3, 2)\", dy: -14}));\n  return Plot.plot({\n    width: 520,\n    height: 420,\n    grid: true,\n    x: {domain: [0, 6.5], label: \"x = kilos of flour (shopper) →\"},\n    y: {domain: [0, 5.5], label: \"↑ y = fine per missing kilo (referee)\"},\n    marks\n  });\n}\n\n\n\n\n\n\n\nviewof eta1 = Inputs.range([0.05, 1.2], {value: 0.3, step: 0.05, label: \"Step size\"})\nviewof n1 = Inputs.range([5, 300], {value: 60, step: 5, label: \"Number of turns\"})\nsaddlePlot(simulate(eta1, n1), false)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nDid you spot the problem? They go round in circles! The shopper reacts to the referee, the referee reacts to the shopper, and they chase each other around the saddle point like two kids running around a table. Neither ever catches the other. Smaller steps make smoother circles, but they are still circles.\nThe good news is in the picture too: the circles go around the answer."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "Adding a fairness rule",
-    "text": "Adding a fairness rule\nTo push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is demographic parity: both groups should be approved at the same rate.\nThere is a small snag. Approval rates jump in steps: one applicant flips from “no” to “yes” and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:\n\nThe model’s average score shouldn’t depend on which group you’re in.\n\nWe also add a dial, which we’ll call the fairness bound. Turn the dial all the way up and there’s no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#the-average-is-smarter-than-the-walker-averaging",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#the-average-is-smarter-than-the-walker-averaging",
+    "title": "How Jaddle Works",
+    "section": "3. The average is smarter than the walker (averaging)",
+    "text": "3. The average is smarter than the walker (averaging)\nWhat is in the middle of a circle? The centre! And if you take lots of points spread evenly around a circle and average them, you land near the centre.\nSo Jaddle keeps a running average of everywhere the players have been. Write \\(z = (x, y)\\) for both players’ positions together. After \\(N\\) turns the average is\n\\[\n\\bar z_N = \\frac{\\eta_1 z_1 + \\eta_2 z_2 + \\dots + \\eta_N z_N}{\\eta_1 + \\eta_2 + \\dots + \\eta_N}\n\\]\nEach position is weighted by the step size \\(\\eta_n\\) used to reach it (more on \\(\\eta\\) in the next section), so bigger steps count for more. Jaddle doesn’t store every old position. It nudges the average a little towards each new point, which costs almost nothing.\nThink of a dog on a lead running in circles around a post. Take a photo every second and average the dog’s position over all the photos: you get the post.\nThe orange line below is the average. Turn up the number of turns and watch it home in on the answer.\n\nviewof eta2 = Inputs.range([0.05, 1.2], {value: 0.3, step: 0.05, label: \"Step size\"})\nviewof n2 = Inputs.range([5, 300], {value: 150, step: 5, label: \"Number of turns\"})\nsaddlePlot(simulate(eta2, n2), true)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThere is a catch. The average gets there slowly: to be 10 times more accurate you need about 10 times more turns. It also never forgets. The very first guesses, which were far from the answer, keep dragging the average away forever. We fix both problems in section 5."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "What we found",
-    "text": "What we found\nWe trained two models: one with no fairness rule, and one with the dial at zero.\nThe fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:\n\nMeasured against the biased historical decisions, the fair model looks worse. Of course it does: it is refusing to copy the bias.\nMeasured against the fair decisions (the ones that depend only on skill), the fair model looks better.\n\nIn real life we would never get to see those “fair decisions”. We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then “accuracy against the past” can be a misleading report card."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#choosing-step-sizes-eta-k-t-and-s",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#choosing-step-sizes-eta-k-t-and-s",
+    "title": "How Jaddle Works",
+    "section": "4. Choosing step sizes: \\(\\eta\\), \\(k\\), \\(t\\) and \\(s\\)",
+    "text": "4. Choosing step sizes: \\(\\eta\\), \\(k\\), \\(t\\) and \\(s\\)\nSteps that are too big overshoot and fly off. Steps that are too small take forever. Worse, different numbers in the same problem can need very different step sizes. One might be measured in millimetres and another in kilometres.\nJaddle builds every step size out of four pieces:\n\\[\n\\tau_j = \\frac{\\eta}{k}\\, t_j \\qquad\\qquad \\sigma_i = \\eta\\, k\\, s_i\n\\]\n\\(\\tau_j\\) is the step for the shopper’s \\(j\\)-th number, and \\(\\sigma_i\\) is the step for the referee’s \\(i\\)-th fine. Think of a group out on a hike:\n\n\n\n\n\n\n\n\nPiece\nWho it affects\nHiking version\n\n\n\n\n\\(\\eta\\) (eta)\neveryone\nhow fast the whole group walks\n\n\n\\(k\\)\nshopper vs. referee\nwhether the shopper team or the referee team walks faster\n\n\n\\(t_j\\)\nthe shopper’s \\(j\\)-th number\nhow long one shopper’s stride is\n\n\n\\(s_i\\)\nthe referee’s \\(i\\)-th fine\nhow long one referee’s stride is\n\n\n\nBefore any of this starts, Jaddle rescales the problem so that the numbers in \\(A\\), \\(b\\) and \\(c\\) are all roughly the same size. It is a bit like converting every measurement to the same units. (The methods are called Ruiz and Pock–Chambolle scaling, if you want to look them up.) On top of that, \\(t\\) and \\(s\\) start at 1 and are then adapted as the solver learns more about the problem. Giving each number its own multiplier like this is called diagonal preconditioning: “diagonal” because if you wrote the multipliers into a table, they would only appear along its diagonal.\n\n\\(\\eta\\): a step that checks itself\nNobody tells Jaddle the right step size. It works it out as it goes, like this.\nTake a trial step. Then measure two things:\n\\[\n\\text{movement} = k\\,\\lVert \\Delta x\\rVert^2 + \\frac{1}{k}\\,\\lVert \\Delta y \\rVert^2\n\\qquad\\qquad\n\\text{interaction} = \\big|\\,\\Delta y^\\top A\\, \\Delta x\\,\\big|\n\\]\n\\(\\Delta x\\) and \\(\\Delta y\\) are how much each player changed, and \\(\\lVert \\Delta x \\rVert^2\\) means “square each change and add them up”. The movement is how far the players went. The interaction is how hard their two moves pushed against each other through the rules in \\(A\\).\nThe interaction is what causes trouble. When the shopper’s move and the referee’s move push on each other too hard, they overreact and fly off. When the moves are big compared with how much they disturb each other, the step is safe. The largest safe step is\n\\[\n\\bar\\eta = \\frac{\\text{movement}}{2 \\times \\text{interaction}}\n\\]\n\nIf \\(\\eta\\) was bigger than \\(\\bar\\eta\\), the step was too greedy. Jaddle throws it away, shrinks \\(\\eta\\) to just under \\(\\bar\\eta\\), and tries again.\nIf \\(\\eta\\) was safe, Jaddle keeps the step and lets \\(\\eta\\) grow a little for next time:\n\n\\[\n\\eta_{\\text{next}} = \\min\\Big(\\; \\big(1 - (n+1)^{-0.3}\\big)\\,\\bar\\eta, \\;\\;\\; \\big(1 + (n+1)^{-0.6}\\big)\\,\\eta \\;\\Big)\n\\]\nDon’t worry about the odd powers; \\(n\\) just counts the steps taken so far. The first part says “stay a bit below the safe limit”. The second says “grow, but by less and less as time goes on”. At the start \\(\\eta\\) can grow by up to 66% in one go. After a thousand steps it can only grow by about 1.6%.\nThis means Jaddle never needs to know in advance how big \\(A\\) can make things, which is expensive to work out for a huge problem. It also fixes a bad starting guess for \\(\\eta\\) within a few steps. (When \\(t\\) and \\(s\\) are switched on, the movement is measured with each number’s change divided by its own \\(t_j\\) or \\(s_i\\), but the idea is the same.)\n\n\n\\(k\\): who should walk faster?\nSometimes the shopper is nearly at the answer while the referee still has a long way to go, or the other way round. \\(k\\) shares the step between them: a bigger \\(k\\) makes the referee’s steps longer (\\(\\eta k\\)) and the shopper’s shorter (\\(\\eta / k\\)). It doesn’t make the steps riskier overall, because the two step sizes multiplied together are always \\(\\eta^2\\), whatever \\(k\\) is.\nJaddle updates \\(k\\) at every restart (section 5). It looks at how far each player travelled during the last stretch:\n\\[\nk_{\\text{target}} = \\frac{\\lVert \\Delta y \\rVert}{\\lVert \\Delta x \\rVert}\n\\]\nIf the referee travelled further, the referee probably still has further to go, so the referee should get the longer stride. Jaddle doesn’t jump straight to the target, because one stretch of measurements can be misleading. It meets the old value halfway, in the multiplying sense:\n\\[\nk_{\\text{new}} = \\sqrt{k_{\\text{old}} \\times k_{\\text{target}}}\n\\]\nThis is the geometric mean. For example, if \\(k_{\\text{old}} = 1\\) and \\(k_{\\text{target}} = 100\\), then \\(k_{\\text{new}} = \\sqrt{100} = 10\\). Why not the ordinary average? Because \\(k\\) is a ratio. \\(k = 100\\) and \\(k = 1/100\\) are equally lopsided, just in opposite directions, and the geometric mean treats them fairly. Jaddle also keeps \\(k\\) between \\(10^{-8}\\) and \\(10^{8}\\) so it can never run away. The very first \\(k\\) is a guess based on the sizes of \\(c\\) and \\(b\\).\n\n\n\\(t\\) and \\(s\\): every number gets its own stride\n\\(\\eta\\) and \\(k\\) treat big groups of numbers the same. But inside a problem with a million numbers, some are marching steadily towards their answer while others are jittering back and forth. \\(t\\) and \\(s\\) give each number its own stride.\nAt each restart, Jaddle looks back over the last stretch at each number \\(j\\) and works out two things:\n\nits net distance \\(r_j\\): how far it ended up from where it started;\nits total wiggle \\(H_j\\): the size of every step it took, squared and added up.\n\nThen it divides one by the other:\n\\[\n\\rho_j = \\frac{r_j}{\\sqrt{H_j}}\n\\]\nHere is what \\(\\rho\\) (rho) looks like for three numbers that each took 16 steps of size 1, so \\(\\sqrt{H} = \\sqrt{16} = 4\\) for all of them:\n\n\n\nNumber\nWhat it did\nNet distance \\(r\\)\n\\(\\rho = r / 4\\)\nMeaning\n\n\n\n\nA\n16 steps forward\n16\n4\nmarching steadily\n\n\nB\n10 forward, 6 back\n4\n1\nwandering a bit\n\n\nC\nforward, back, forward, back…\n0\n0\njittering on the spot\n\n\n\nA big \\(\\rho\\) means the number knows where it is going, so it should take bigger steps. A small \\(\\rho\\) means it keeps overshooting and coming back, so it should take smaller steps. Jaddle updates each number’s stride with\n\\[\nt_j \\;\\leftarrow\\; t_j \\times \\left(\\frac{\\rho_j}{\\rho_{\\text{typical}}}\\right)^{1/2}\n\\]\nwhere \\(\\rho_{\\text{typical}}\\) is the geometric mean of all the \\(\\rho\\)’s. If only A and B were in the problem, \\(\\rho_{\\text{typical}} = \\sqrt{4 \\times 1} = 2\\):\n\nA’s stride is multiplied by \\(\\sqrt{4/2} \\approx 1.41\\), so it gets 41% longer.\nB’s stride is multiplied by \\(\\sqrt{1/2} \\approx 0.71\\), so it gets 29% shorter.\n\nDividing by the typical value keeps the group’s overall pace the same, so \\(\\eta\\) and \\(k\\) stay in charge of that. Each stride is also kept within 10 times bigger or smaller than where it started, and numbers that didn’t move at all (for example ones stuck at a limit) give no information, so they keep their stride. The referee’s fines get exactly the same treatment to update \\(s_i\\).\nThis idea borrows from machine learning methods called AdaGrad and DoG (“distance over gradients”). On a standard collection of hard test problems (the MIPLIB 2017 linear programs) it cut Jaddle’s solve times by about 18% on average."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "The whole trade-off in one go",
-    "text": "The whole trade-off in one go\nOne fair model and one unfair model only tell part of the story. What about all the settings in between?\nWe picked 40 different positions for the fairness dial and asked Jaddle, the optimisation library this example is built with, to train all 40 models at the same time, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.\nReading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#restarts-when-in-doubt-start-fresh",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#restarts-when-in-doubt-start-fresh",
+    "title": "How Jaddle Works",
+    "section": "5. Restarts: when in doubt, start fresh",
+    "text": "5. Restarts: when in doubt, start fresh\nRemember the two problems with averaging? It is slow, and it never forgets the bad early guesses.\nThe fix is the restart. Once the average has got a lot closer to the answer, Jaddle jumps both players to the average, throws away all the history, and starts a fresh average from there.\nWhy does that help so much? The size of the circle the players run around depends on how far from the answer they start. Start closer and the next circle is smaller, so the next average is closer still, and so on. Each restart shrinks the error by a fixed fraction. “Ten times more turns for ten times more accuracy” turns into “a few more restarts for each extra digit of accuracy”.\n\nWhen to restart\nJaddle doesn’t know the answer (if it did, it could stop!), so it can’t measure the distance to it. Instead it uses a wrongness score made from three checks. The score is the largest of them:\n\nBroken rules. How badly does the shopper break the rules? For flour: \\(\\max(0,\\ 3 - x)\\).\nUnfair fines. Could these fines ever be the right price list? For flour, a fine above $2 makes no sense, because buying more flour would be cheaper than paying it: \\(\\max(0,\\ y - 2)\\).\nThe gap. The shopper pays \\(2x\\). The fines tell you the least anyone could ever pay, here \\(3y\\). At the answer these two numbers match (\\(2 \\times 3 = 3 \\times 2 = 6\\)), so the gap \\(|2x - 3y|\\) should be zero.\n\nEach check is divided by the size of the problem’s numbers, so the score means the same thing for a tiny problem and a huge one. When all three checks are below a small tolerance (by default 0.001), Jaddle stops: it has found the answer.\nWrite \\(m\\) for the score now and \\(m_{\\text{last}}\\) for the score at the last restart. Jaddle restarts when one of these happens:\n\nGood progress: \\(m \\le 0.2\\, m_{\\text{last}}\\). The score has dropped to a fifth. Lock in the gain.\nStalling: \\(m \\le 0.8\\, m_{\\text{last}}\\) and the score has started going back up. We made some progress and it’s fading, so lock it in.\nTaking too long: the current stretch has gone on for a long time without either of the above, so restart anyway.\n\nAt a restart Jaddle:\n\njumps to whichever of the current point or the average has the better score;\nupdates \\(k\\), \\(t\\) and \\(s\\) using what it saw during the stretch;\nthrows away the old average and starts a new one;\nkeeps \\(\\eta\\), since the step it learned is still useful.\n\n\n\nSee the difference\nHere is the flour problem again with a fixed step size, scored by the wrongness score above. The score axis is logarithmic: each step down the axis divides the score by the same amount.\n\nrestartData = {\n  const merit = (x, y) =&gt; Math.max(\n    Math.max(0, 3 - x) / 4,\n    Math.max(0, y - 2) / 3,\n    Math.abs(2 * x - 3 * y) / (1 + Math.abs(2 * x) + Math.abs(3 * y))\n  );\n  const step = (x, y, eta) =&gt; {\n    x = Math.max(0, x - eta * (2 - y));\n    y = Math.max(0, y + eta * (3 - x));\n    return [x, y];\n  };\n  const eta = 0.4, N = 300, floor = 1e-16, rows = [];\n\n  // No restarts: score the current point and the average.\n  let x = 0, y = 0, sx = 0, sy = 0;\n  for (let i = 1; i &lt;= N; i++) {\n    [x, y] = step(x, y, eta);\n    sx += x; sy += y;\n    rows.push({i, score: Math.max(floor, merit(x, y)), method: \"Current point only\"});\n    rows.push({i, score: Math.max(floor, merit(sx / i, sy / i)), method: \"Average\"});\n  }\n\n  // With restarts.\n  x = 0; y = 0; sx = 0; sy = 0;\n  let n = 0, mLast = merit(0, 0), prev = Infinity;\n  for (let i = 1; i &lt;= N; i++) {\n    [x, y] = step(x, y, eta);\n    n++; sx += x; sy += y;\n    const ax = sx / n, ay = sy / n;\n    const ma = merit(ax, ay), mi = merit(x, y), m = Math.min(ma, mi);\n    rows.push({i, score: Math.max(floor, m), method: \"Average + restarts\"});\n    const good = m &lt;= 0.2 * mLast;\n    const stalling = m &lt;= 0.8 * mLast && m &gt; prev;\n    if (n &gt;= 10 && (good || stalling)) {\n      if (ma &lt;= mi) { x = ax; y = ay; }\n      sx = 0; sy = 0; n = 0; mLast = m; prev = Infinity;\n    } else {\n      prev = m;\n    }\n  }\n  return rows;\n}\n\n\n\n\n\n\n\nPlot.plot({\n  width: 620,\n  height: 380,\n  grid: true,\n  x: {label: \"turns →\"},\n  y: {type: \"log\", label: \"↑ wrongness score (log scale)\", tickFormat: \".0e\"},\n  color: {\n    legend: true,\n    domain: [\"Current point only\", \"Average\", \"Average + restarts\"],\n    range: [\"#4c78a8\", \"#f58518\", \"#54a24b\"]\n  },\n  marks: [\n    Plot.line(restartData, {x: \"i\", y: \"score\", stroke: \"method\", strokeWidth: 2})\n  ]\n})\n\n\n\n\n\n\nThe current point (blue) circles forever and never improves. The average (orange) slowly creeps in. With restarts (green) the score drops off a cliff and reaches the limit of what the computer can store (about 16 digits) in roughly 200 turns."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "The price of fairness",
-    "text": "The price of fairness\nHere is my favourite part. When an optimiser obeys a rule, it can also tell you how much that rule is costing. Mathematicians call this a dual variable or shadow price. Think of it as a receipt that comes with each answer, saying: “if you tightened this rule by one more notch, the training error would go up by this much.”\nFor our fairness rule, that receipt is a price of fairness. We found that:\n\nWhen the dial is loose enough that the rule isn’t actually stopping anything, the price is zero. The rule is just along for the ride.\nAs the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.\n\nThat’s useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is “worth it”, you can see the actual exchange rate and talk about it openly."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#putting-it-all-together",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#putting-it-all-together",
+    "title": "How Jaddle Works",
+    "section": "Putting it all together",
+    "text": "Putting it all together\nHere is the whole recipe in one place:\nrescale the problem so its numbers are all about the same size\nstart with x = 0 (inside its limits), y = 0, η = 1, k = a guess, all t and s = 1\n\nrepeat:\n    take a trial alternating step with τ = (η / k)·t and σ = η·k·s\n    if the step was too big:  shrink η and try again\n    otherwise:                keep it, update the average, let η grow a little\n\n    every so often:\n        work out the wrongness score\n        if all three checks are tiny:  stop, we have the answer!\n        if a restart rule fires:\n            jump to the better of the current point and the average\n            update k, t and s\n            start a fresh average\nEvery part of this is either a multiplication by \\(A\\) or \\(A^\\top\\), or simple arithmetic on each number separately. There are no big equation-solving steps, which is why it works on problems with millions of numbers and runs so well on graphics cards. Jaddle is written in JAX, a Python library that turns the whole loop into one fast compiled program. The same code runs on a laptop CPU, a GPU or a TPU.\nJaddle also has a second solver for curvier problems (convex programs), where the cost and rules can be more complicated than straight lines. It uses the same five ideas. The only difference is that it can’t write the slopes down as \\(c + A^\\top y\\), so JAX works them out automatically."
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "A few footnotes",
-    "text": "A few footnotes\nFairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.\n\nDemographic parity is only one definition of fairness. Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.\nOur world is made up. Real data is messier, and real bias is rarely a single fixed penalty.\nThe rule we used is a stand-in. Making average scores equal tends to bring approval rates together, but it doesn’t guarantee they match exactly."
+    "objectID": "posts/how-jaddle-works/how_jaddle_works.html#cheat-sheet",
+    "href": "posts/how-jaddle-works/how_jaddle_works.html#cheat-sheet",
+    "title": "How Jaddle Works",
+    "section": "Cheat sheet",
+    "text": "Cheat sheet\n\n\n\n\n\n\n\n\nSymbol\nName\nWhat it means\n\n\n\n\n\\(x\\)\nprimal variables\nthe shopper’s choices\n\n\n\\(y\\)\ndual variables\nthe referee’s fines, one per rule\n\n\n\\(L(x, y)\\)\nLagrangian\nthe total bill: cost plus fines\n\n\n\\(\\tau,\\ \\sigma\\)\nstep sizes\nhow far the shopper / referee move per turn\n\n\n\\(\\bar z\\)\naverage\nthe weighted average of everywhere they’ve been\n\n\n\\(\\eta\\)\nbase step\nthe whole group’s pace, learned as it goes\n\n\n\\(\\bar\\eta\\)\nsafe step\nthe largest step that won’t make them overreact\n\n\n\\(k\\)\nprimal weight\nshares the pace between shopper and referee\n\n\n\\(t_j,\\ s_i\\)\ndiagonal\neach number’s personal stride\n\n\n\\(\\rho_j\\)\ndrift ratio\nnet distance ÷ total wiggle\n\n\n\\(m\\)\nwrongness score\nthe largest of: broken rules, unfair fines, gap"
   },
   {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
-    "title": "Teaching a Robot Banker to Play Fair",
+    "objectID": "posts/mpc-fleet/mpc-fleet.html",
+    "href": "posts/mpc-fleet/mpc-fleet.html",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "",
+    "text": "Imagine four blocks sitting in a row on a slippery table, joined to each other by springs, with the two end blocks also attached by springs to walls. Give one a poke and the whole chain starts jiggling back and forth. Now add three little motors, one between each neighbouring pair of blocks, that can push them apart or pull them together. And just to make life interesting, every so often a random shove knocks the blocks around.\nYour job is to keep the chain calm, and keep every block within a safe zone around its resting spot.\nNow imagine doing that for a thousand chains at once."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "The jiggling-blocks system",
+    "text": "The jiggling-blocks system\nThis setup comes from a well-known 2010 research paper by Yang Wang and Stephen Boyd, and it’s become a standard test for control methods. The rules are:\n\nEach motor has a strength limit. It can only push or pull so hard.\nEach block should stay within a safe zone around its resting position.\nWe want the blocks to settle down without the motors working harder than necessary."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
+    "href": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Thinking ahead: model predictive control",
+    "text": "Thinking ahead: model predictive control\nHow do you decide what the motors should do? One of the most powerful approaches is called model predictive control, or MPC.\nMPC works a lot like a good chess player:\n\nLook at the board. Measure where every block is and how fast it’s moving.\nThink several moves ahead. Using a model of how springs and blocks behave, plan the best sequence of motor pushes for the next 15 steps (about seven and a half seconds).\nMake only the first move. Apply the first push in the plan.\nLook again and re-plan. The world never goes exactly as predicted (those random shoves!), so throw the old plan away and make a fresh one from the new position.\n\nThis loop of plan, act, re-plan makes MPC both clever and adaptable. It’s used in self-driving cars, chemical plants, robots, drones and even some heating systems.\nEach plan is a small optimisation puzzle called a quadratic program, with 105 numbers to choose and 120 rules to obey."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
+    "href": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Soft walls instead of hard ones",
+    "text": "Soft walls instead of hard ones\nThere’s a subtle problem. Sometimes a random shove knocks a block so hard that no plan, however clever, can keep it inside its safe zone. If the rules said “the block must stay inside, no exceptions”, the puzzle would have no solution and the controller would be stuck.\nSo the safe zones are made soft. A block is allowed to stray outside, but the plan pays a hefty fine for every bit it goes over. The fine is large enough that whenever staying inside is possible, the plan does exactly that. It’s only when there’s no other choice that a block is allowed to go a little over, and even then the plan does its best to bring it back.\nThe motor limits, on the other hand, stay hard. A motor physically can’t push harder than its maximum, so the plan is never allowed to ask it to."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
+    "href": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "One at a time versus all together",
+    "text": "One at a time versus all together\nA single one of these puzzles is tiny. A good solver running on an ordinary computer processor (CPU) can crack one in well under a thousandth of a second. That’s very hard to beat.\nBut we don’t have one system. We have a thousand, each starting from its own random position and getting its own random shoves. At every step, we need a thousand fresh plans.\nHere’s where the two approaches differ:\n\nThe one-at-a-time approach solves the thousand puzzles one after another, using a well-known solver called SCS. It’s a bit like a single brilliant runner delivering a thousand letters, one trip at a time.\nThe all-together approach uses Jaddle on a graphics card (GPU). All thousand chains have the same springs, motors and rules; only their positions differ. So Jaddle solves all thousand puzzles side by side, in lockstep, like a marching band where every musician takes the same step at the same time.\n\nBoth approaches use a warm start: each new plan begins from the previous step’s plan, shifted forward by one step. Since the world hasn’t changed much in half a second, the old plan is usually a great starting guess."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
+    "href": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "And the winner is…",
+    "text": "And the winner is…\nIt depends on how many systems you have, which is the most interesting part of the whole example.\n\nOne system: the one-at-a-time solver wins. A single tiny puzzle leaves a GPU almost entirely idle; it spends most of its time just getting started.\nTens of systems: the batched approach catches up.\nA thousand systems: the batched approach on a laptop GPU spends about one-fortieth as long per puzzle as the one-at-a-time solver, and its plans are slightly more accurate too. Even running the batched approach on an ordinary CPU, it’s about three times faster than looping.\nTen thousand systems: something new happens…"
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "The slowest member of the band",
+    "text": "The slowest member of the band\nRemember the marching band? The band only finishes when its slowest member finishes. In a fleet of ten thousand, there are always a few chains in a tricky spot, perhaps just shoved past the edge of their safe zone, and their puzzles take longer to solve. Everyone else ends up waiting for them.\nThe fix is something every real controller needs anyway: a deadline. We give the solver a fixed amount of effort per step. Any system that hasn’t fully finished by then simply uses the best plan it has so far. Because Jaddle always keeps its answers within the motor limits as it works, even an unfinished plan never asks a motor to do the impossible.\nWith a deadline in place, the time per puzzle for ten thousand systems drops back down near its best."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
+    "href": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Do they agree?",
+    "text": "Do they agree?\nSpeed is no use if the answers are wrong. So we check both approaches against a reference answer solved to extremely high accuracy. Both are close, and over the whole run, the two fleets end up with nearly identical total costs. The blocks stay calm, the motors stay within their limits, and the chains settle down in both cases."
+  },
+  {
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
+    "title": "Herding a Thousand Springy Robots",
     "section": "The takeaway",
-    "text": "The takeaway\nA model trained to imitate the past will happily imitate the past’s mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html",
-    "href": "posts/robust-kalman/robust-kalman.html",
-    "title": "Ignoring the Fibbers",
-    "section": "",
-    "text": "Imagine you’re trying to follow a remote-controlled boat drifting around a pond, but you can’t see it directly. Instead, a friend on the bank shouts out its position every few seconds. Most of the time they’re pretty accurate, give or take a little. But your friend is easily distracted, and about one time in five they shout out something completely off, as if they’d glanced at a duck instead.\nCan you still work out where the boat actually went?"
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
-    "href": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
-    "title": "Ignoring the Fibbers",
-    "section": "Two sources of information",
-    "text": "Two sources of information\nYou have two things to go on:\n\nThe measurements, your friend’s shouted positions. Most are close; some are wild.\nThe physics. Boats don’t teleport. They glide along, speeding up and slowing down smoothly, nudged now and then by gusts of wind you can’t predict.\n\nThe trick is to combine them. You’re looking for a path that obeys the physics and stays reasonably close to the measurements. If a measurement says the boat jumped five metres to the left in an instant, the physics says “that’s not possible”, and the path should mostly ignore it.\nFinding the best such path, after the fact, using all the measurements at once, is called smoothing."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
-    "href": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
-    "title": "Ignoring the Fibbers",
-    "section": "The classic recipe: the Kalman smoother",
-    "text": "The classic recipe: the Kalman smoother\nIn the 1960s, Rudolf Kalman developed a beautifully efficient method for exactly this kind of problem. Versions of his ideas helped steer the Apollo spacecraft to the Moon, and today they run inside phones, cars, drones and countless other gadgets.\nThe classic approach chooses the path that keeps two things small at once:\n\nthe wind gusts needed to explain the path (smaller gusts mean a more natural path), and\nthe misses, the gaps between the path and each measurement.\n\nTo combine all the misses into one number, it squares each one and adds them up. Squaring makes sense when errors are small and well-behaved: it treats misses in either direction equally and is very convenient mathematically."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
-    "href": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
-    "title": "Ignoring the Fibbers",
-    "section": "The problem with squaring",
-    "text": "The problem with squaring\nSquaring has a weakness. A miss that’s twice as big counts four times as much. A miss that’s twenty times as big counts four hundred times as much.\nIn our example, the occasional wild measurement is about twenty times noisier than a normal one. So when the classic smoother tries to keep the squared misses small, those few wild measurements dominate everything. They act like bullies, dragging the estimated path towards themselves, because ignoring them would be “too expensive”.\nIt’s a bit like a teacher averaging test scores where one student’s answer of “a million” for a question with answer “seven” drags the class average into the stratosphere."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
-    "href": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
-    "title": "Ignoring the Fibbers",
-    "section": "A fairer referee: the Huber penalty",
-    "text": "A fairer referee: the Huber penalty\nThe fix is to change how misses are scored. Instead of squaring every miss, we use the Huber penalty, named after the statistician Peter Huber:\n\nFor small misses, it behaves just like squaring. Normal, everyday noise is treated exactly as before.\nFor big misses, it switches to growing in a straight line. A miss twice as big costs only about twice as much, not four times.\n\n\n\n\n\n\n\nTipA helpful way to picture it\n\n\n\nThe squared penalty is like a rubber band that pulls harder and harder the further you stretch it. The Huber penalty is a rubber band that, beyond a certain point, stops getting stronger and just pulls with a steady force. Wild measurements still tug on the path, but they can no longer yank it off course.\n\n\nThis version is called the robust Kalman smoother. “Robust”, in statistics, means “doesn’t fall apart when some of the data is bad”."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-experiment",
-    "href": "posts/robust-kalman/robust-kalman.html#the-experiment",
-    "title": "Ignoring the Fibbers",
-    "section": "The experiment",
-    "text": "The experiment\nWe simulate an object moving around a flat plane for 50 seconds, measured 1,000 times. It has a position and a speed, a little friction slowing it down, and random pushes knocking it around. Each measurement has a one-in-five chance of being an outlier.\nThen we estimate the path twice: once with the classic smoother and once with the robust one.\nThe results are striking. The classic smoother’s path is visibly dragged around by the outliers, wandering off towards the wild measurements. The robust smoother’s path sticks closely to the true trajectory, as if it had simply noticed which shouts to take with a pinch of salt."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
-    "href": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
-    "title": "Ignoring the Fibbers",
-    "section": "What Jaddle does differently",
-    "text": "What Jaddle does differently\nBoth versions of the problem are written in CVXPY, a popular language for describing optimisation problems. In fact, this is one of CVXPY’s own showcase examples.\nThe classic smoother is a relatively simple kind of problem (a quadratic program), and Jaddle solves it directly.\nThe robust version is more interesting. Normally CVXPY would translate the Huber penalty into a bundle of cone-shaped rules, which works but makes the problem bigger and more complicated. Jaddle takes a different route: it keeps the Huber penalty as the smooth, gently curving function it really is, and solves the problem in that form. It also notices that the “miss” for each measurement is completely determined by the path, so it can drop those as separate unknowns and work with the path alone. Fewer moving parts, same answer.\nWe check both of Jaddle’s answers against Clarabel, a well-established solver that comes with CVXPY, and they agree."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-takeaway",
-    "href": "posts/robust-kalman/robust-kalman.html#the-takeaway",
-    "title": "Ignoring the Fibbers",
-    "section": "The takeaway",
-    "text": "The takeaway\nReal-world data is rarely perfectly behaved. Sensors glitch, signals bounce, people mishear. A method that assumes every measurement is roughly right can be thrown badly off course by a handful that aren’t.\nBy changing one small thing, how we score big misses, the robust Kalman smoother learns to listen to the crowd without being bullied by the loudest fibbers. It’s a good lesson beyond boats and ponds: when you’re combining lots of evidence, make sure no single piece gets to shout over all the rest."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html",
-    "href": "posts/portfolio/portfolio.html",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "",
-    "text": "Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?\nIf you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that’s like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.\nThis example explores that trade-off."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#the-rules-of-the-game",
-    "href": "posts/portfolio/portfolio.html#the-rules-of-the-game",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "The rules of the game",
-    "text": "The rules of the game\nWe need to decide what fraction of our money goes into each of the 500 assets. The rules are:\n\nThe fractions must add up to 100%. We invest all the money, no more and no less.\nNo fraction can be negative. In finance-speak, the portfolio is long-only: we can’t bet against an asset or borrow to invest.\nThe portfolio’s volatility (how much it’s expected to wobble) must stay below a limit we choose.\n\nWithin those rules, we want the highest expected return."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
-    "href": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Two kinds of wobble",
-    "text": "Two kinds of wobble\nTo measure wobble, we use what’s called a factor model. It says each asset’s ups and downs come from two sources.\nShared wobble. Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or factors, and each asset reacts to them in its own way.\nPersonal wobble. Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.\nThis distinction matters because the two kinds of wobble behave differently when you combine assets:\n\nPersonal wobbles tend to cancel out. If you own lots of different things, one asset’s bad day is often balanced by another’s good day. This is the magic of diversification.\nShared wobbles don’t cancel. If all your assets love sunny weather, owning more of them doesn’t protect you from rain."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
-    "href": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Where the ice-cream cone comes in",
-    "text": "Where the ice-cream cone comes in\nTo work out a portfolio’s total wobble, you collect all its exposures, to each shared factor and to each asset’s personal risk, and measure their combined size, the way you’d measure the length of an arrow from its parts.\nThe rule “this combined size must be below the limit” has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you’d get a shape like a cone. It even has a nickname among optimisation folk: the ice-cream cone. Its formal name is the second-order cone.\nWhy does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like “this plus that must be at most ten”. A cone has a curved, rounded surface, so those solvers can’t take it directly. Jaddle can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it’s wandered out."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
-    "href": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Tracing the efficient frontier",
-    "text": "Tracing the efficient frontier\nRather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.\nIf you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the efficient frontier. Every point on it is a portfolio where you can’t get more expected return without accepting more risk. Any portfolio below the curve is leaving money on the table.\nTwo things make tracing this curve quicker:\n\nWarm starts. Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn’t change the best portfolio completely, so starting nearby saves a lot of work.\nReusing the setup. The problem is described once, and only the wobble limit changes between solves."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
-    "href": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "The slope tells a story",
-    "text": "The slope tells a story\nEvery time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: “If I allowed a little more wobble, how much extra return would I get?”\nThat’s precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you’re being very cautious, accepting a bit more risk buys you a healthy boost in return. When you’re already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
-    "href": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "What the portfolios look like",
-    "text": "What the portfolios look like\nAt the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.\nAs the limit loosens, the portfolio concentrates on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#checking-our-work",
-    "href": "posts/portfolio/portfolio.html#checking-our-work",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Checking our work",
-    "text": "Checking our work\nTo make sure Jaddle’s answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#the-takeaway",
-    "href": "posts/portfolio/portfolio.html#the-takeaway",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "The takeaway",
-    "text": "The takeaway\nInvesting well isn’t just about picking winners. It’s about understanding how your choices wobble together. By describing risk as the size of an arrow, and using a solver that’s comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy."
-  },
-  {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Jaddle",
-    "section": "",
-    "text": "Jaddle: Saddle up with JAX\n\n\nGitHub LinkedIn\n\n\n\n\n\n\n\n   \n    \n    \n      Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\nHow Much Wobble Can You Handle?\n\n\nBuilding a risk-limited investment portfolio, one ice-cream cone at a time\n\n\n\njaddle\n\noptimisation\n\ncone programming\n\nfinance\n\n\n\nA friendly look at portfolio optimisation: shared risk, personal risk, the efficient frontier, and why the shape of a cone matters.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nThe Goldilocks Battery\n\n\nNot too big, not too small: using gradient descent to size a home battery\n\n\n\njaddle\n\noptimisation\n\nlinear programming\n\nenergy\n\n\n\nHow to choose the right battery for a solar-powered site by solving many small daily plans at once and letting them tell you which way to grow.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nIgnoring the Fibbers\n\n\nHow a robust Kalman smoother keeps track of a moving object when some measurements are wildly wrong\n\n\n\njaddle\n\noptimisation\n\nestimation\n\nrobust statistics\n\n\n\nA gentle introduction to Kalman smoothing, why a few bad measurements can wreck it, and how the Huber penalty puts outliers in their place.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHerding a Thousand Springy Robots\n\n\nModel predictive control for a whole fleet at once, and why a GPU is like a marching band\n\n\n\njaddle\n\noptimisation\n\ncontrol\n\nGPU\n\n\n\nAn introduction to model predictive control, and how solving a thousand small planning problems in lockstep on a GPU beats solving them one at a time.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nTeaching a Robot Banker to Play Fair\n\n\nWhat happens when a computer learns from a biased past, and how a single rule can nudge it back\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\nfairness\n\n\n\nA friendly tour of fairness-constrained logistic regression: why hiding the sensitive attribute isn’t enough, and how to measure the price of fairness.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nMax-Cut: The Art of Splitting a Room\n\n\nHow pretending a hard puzzle is easier gives you a near-perfect answer, and a promise about how good it is\n\n\n\njaddle\n\noptimisation\n\nsemidefinite programming\n\ngraphs\n\n\n\nA gentle introduction to the Max-Cut problem and the Goemans–Williamson trick: relax, solve, then slice with a random sheet.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nA Gentle Tour of Saddle Point Solvers\n\n\nHow two stubborn players, each learning from the other, end up somewhere useful\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\n\n\nAn intuitive introduction to saddle point solvers: turning constraints into a two-player game, finding a Nash equilibrium, and why long-running averages can settle even when individual updates wobble.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nSmall Problems? Use Clarabel. Big Problems? Use Jaddle.\n\n\nCareful steps versus cheap steps, and how problem size decides the winner\n\n\n\njaddle\n\noptimisation\n\nClarabel\n\nGPU\n\n\n\nA guide to choosing between a careful, high-accuracy solver like Clarabel and a cheap-step GPU solver like Jaddle, based on problem size and how many problems you need to solve.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\nNo matching items"
+    "text": "The takeaway\nThis example isn’t saying “always use a GPU”. If you’re controlling one robot and need an answer within a strict fraction of a millisecond, a traditional CPU solver is still the right tool.\nBut a surprising number of real problems involve lots of similar decisions at once: a fleet of delivery robots, a wind farm full of turbines, or testing one controller against thousands of possible futures to see how it copes. In those cases, it’s worth asking the marching-band question: could all of these take the same step together? When the answer is yes, solving them side by side can be dramatically faster than solving them one at a time."
   },
   {
     "objectID": "posts/battery-sizing/battery-sizing.html",
@@ -329,67 +259,200 @@
     "text": "The takeaway\nBig decisions often depend on lots of small ones. Here, a one-off purchase depends on thousands of hour-by-hour choices across many different days. By solving all the small problems together, and using the slopes they give away for free, we can steer the big decision step by step until it’s just right. Not too big, not too small."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html",
-    "href": "posts/mpc-fleet/mpc-fleet.html",
-    "title": "Herding a Thousand Springy Robots",
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Jaddle",
     "section": "",
-    "text": "Imagine four blocks sitting in a row on a slippery table, joined to each other by springs, with the two end blocks also attached by springs to walls. Give one a poke and the whole chain starts jiggling back and forth. Now add three little motors, one between each neighbouring pair of blocks, that can push them apart or pull them together. And just to make life interesting, every so often a random shove knocks the blocks around.\nYour job is to keep the chain calm, and keep every block within a safe zone around its resting spot.\nNow imagine doing that for a thousand chains at once."
+    "text": "Jaddle: Saddle up with JAX\n\n\nGitHub LinkedIn\n\n\n\n\n\n\n\n   \n    \n    \n      Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\nHow Jaddle Works\n\n\nA shopper, a referee, a horse saddle and a few clever tricks\n\n\nAn explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.\n\n\n\n\n\nOct 22, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHow Much Wobble Can You Handle?\n\n\nBuilding a risk-limited investment portfolio, one ice-cream cone at a time\n\n\n\njaddle\n\noptimisation\n\ncone programming\n\nfinance\n\n\n\nA friendly look at portfolio optimisation: shared risk, personal risk, the efficient frontier, and why the shape of a cone matters.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nThe Goldilocks Battery\n\n\nNot too big, not too small: using gradient descent to size a home battery\n\n\n\njaddle\n\noptimisation\n\nlinear programming\n\nenergy\n\n\n\nHow to choose the right battery for a solar-powered site by solving many small daily plans at once and letting them tell you which way to grow.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nIgnoring the Fibbers\n\n\nHow a robust Kalman smoother keeps track of a moving object when some measurements are wildly wrong\n\n\n\njaddle\n\noptimisation\n\nestimation\n\nrobust statistics\n\n\n\nA gentle introduction to Kalman smoothing, why a few bad measurements can wreck it, and how the Huber penalty puts outliers in their place.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHerding a Thousand Springy Robots\n\n\nModel predictive control for a whole fleet at once, and why a GPU is like a marching band\n\n\n\njaddle\n\noptimisation\n\ncontrol\n\nGPU\n\n\n\nAn introduction to model predictive control, and how solving a thousand small planning problems in lockstep on a GPU beats solving them one at a time.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nTeaching a Robot Banker to Play Fair\n\n\nWhat happens when a computer learns from a biased past, and how a single rule can nudge it back\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\nfairness\n\n\n\nA friendly tour of fairness-constrained logistic regression: why hiding the sensitive attribute isn’t enough, and how to measure the price of fairness.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nMax-Cut: The Art of Splitting a Room\n\n\nHow pretending a hard puzzle is easier gives you a near-perfect answer, and a promise about how good it is\n\n\n\njaddle\n\noptimisation\n\nsemidefinite programming\n\ngraphs\n\n\n\nA gentle introduction to the Max-Cut problem and the Goemans–Williamson trick: relax, solve, then slice with a random sheet.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nA Gentle Tour of Saddle Point Solvers\n\n\nHow two stubborn players, each learning from the other, end up somewhere useful\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\n\n\nAn intuitive introduction to saddle point solvers: turning constraints into a two-player game, finding a Nash equilibrium, and why long-running averages can settle even when individual updates wobble.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nSmall Problems? Use Clarabel. Big Problems? Use Jaddle.\n\n\nCareful steps versus cheap steps, and how problem size decides the winner\n\n\n\njaddle\n\noptimisation\n\nClarabel\n\nGPU\n\n\n\nA guide to choosing between a careful, high-accuracy solver like Clarabel and a cheap-step GPU solver like Jaddle, based on problem size and how many problems you need to solve.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\nNo matching items"
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "The jiggling-blocks system",
-    "text": "The jiggling-blocks system\nThis setup comes from a well-known 2010 research paper by Yang Wang and Stephen Boyd, and it’s become a standard test for control methods. The rules are:\n\nEach motor has a strength limit. It can only push or pull so hard.\nEach block should stay within a safe zone around its resting position.\nWe want the blocks to settle down without the motors working harder than necessary."
+    "objectID": "posts/portfolio/portfolio.html",
+    "href": "posts/portfolio/portfolio.html",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "",
+    "text": "Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?\nIf you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that’s like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.\nThis example explores that trade-off."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
-    "href": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Thinking ahead: model predictive control",
-    "text": "Thinking ahead: model predictive control\nHow do you decide what the motors should do? One of the most powerful approaches is called model predictive control, or MPC.\nMPC works a lot like a good chess player:\n\nLook at the board. Measure where every block is and how fast it’s moving.\nThink several moves ahead. Using a model of how springs and blocks behave, plan the best sequence of motor pushes for the next 15 steps (about seven and a half seconds).\nMake only the first move. Apply the first push in the plan.\nLook again and re-plan. The world never goes exactly as predicted (those random shoves!), so throw the old plan away and make a fresh one from the new position.\n\nThis loop of plan, act, re-plan makes MPC both clever and adaptable. It’s used in self-driving cars, chemical plants, robots, drones and even some heating systems.\nEach plan is a small optimisation puzzle called a quadratic program, with 105 numbers to choose and 120 rules to obey."
+    "objectID": "posts/portfolio/portfolio.html#the-rules-of-the-game",
+    "href": "posts/portfolio/portfolio.html#the-rules-of-the-game",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "The rules of the game",
+    "text": "The rules of the game\nWe need to decide what fraction of our money goes into each of the 500 assets. The rules are:\n\nThe fractions must add up to 100%. We invest all the money, no more and no less.\nNo fraction can be negative. In finance-speak, the portfolio is long-only: we can’t bet against an asset or borrow to invest.\nThe portfolio’s volatility (how much it’s expected to wobble) must stay below a limit we choose.\n\nWithin those rules, we want the highest expected return."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
-    "href": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Soft walls instead of hard ones",
-    "text": "Soft walls instead of hard ones\nThere’s a subtle problem. Sometimes a random shove knocks a block so hard that no plan, however clever, can keep it inside its safe zone. If the rules said “the block must stay inside, no exceptions”, the puzzle would have no solution and the controller would be stuck.\nSo the safe zones are made soft. A block is allowed to stray outside, but the plan pays a hefty fine for every bit it goes over. The fine is large enough that whenever staying inside is possible, the plan does exactly that. It’s only when there’s no other choice that a block is allowed to go a little over, and even then the plan does its best to bring it back.\nThe motor limits, on the other hand, stay hard. A motor physically can’t push harder than its maximum, so the plan is never allowed to ask it to."
+    "objectID": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
+    "href": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Two kinds of wobble",
+    "text": "Two kinds of wobble\nTo measure wobble, we use what’s called a factor model. It says each asset’s ups and downs come from two sources.\nShared wobble. Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or factors, and each asset reacts to them in its own way.\nPersonal wobble. Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.\nThis distinction matters because the two kinds of wobble behave differently when you combine assets:\n\nPersonal wobbles tend to cancel out. If you own lots of different things, one asset’s bad day is often balanced by another’s good day. This is the magic of diversification.\nShared wobbles don’t cancel. If all your assets love sunny weather, owning more of them doesn’t protect you from rain."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
-    "href": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "One at a time versus all together",
-    "text": "One at a time versus all together\nA single one of these puzzles is tiny. A good solver running on an ordinary computer processor (CPU) can crack one in well under a thousandth of a second. That’s very hard to beat.\nBut we don’t have one system. We have a thousand, each starting from its own random position and getting its own random shoves. At every step, we need a thousand fresh plans.\nHere’s where the two approaches differ:\n\nThe one-at-a-time approach solves the thousand puzzles one after another, using a well-known solver called SCS. It’s a bit like a single brilliant runner delivering a thousand letters, one trip at a time.\nThe all-together approach uses Jaddle on a graphics card (GPU). All thousand chains have the same springs, motors and rules; only their positions differ. So Jaddle solves all thousand puzzles side by side, in lockstep, like a marching band where every musician takes the same step at the same time.\n\nBoth approaches use a warm start: each new plan begins from the previous step’s plan, shifted forward by one step. Since the world hasn’t changed much in half a second, the old plan is usually a great starting guess."
+    "objectID": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
+    "href": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Where the ice-cream cone comes in",
+    "text": "Where the ice-cream cone comes in\nTo work out a portfolio’s total wobble, you collect all its exposures, to each shared factor and to each asset’s personal risk, and measure their combined size, the way you’d measure the length of an arrow from its parts.\nThe rule “this combined size must be below the limit” has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you’d get a shape like a cone. It even has a nickname among optimisation folk: the ice-cream cone. Its formal name is the second-order cone.\nWhy does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like “this plus that must be at most ten”. A cone has a curved, rounded surface, so those solvers can’t take it directly. Jaddle can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it’s wandered out."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
-    "href": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "And the winner is…",
-    "text": "And the winner is…\nIt depends on how many systems you have, which is the most interesting part of the whole example.\n\nOne system: the one-at-a-time solver wins. A single tiny puzzle leaves a GPU almost entirely idle; it spends most of its time just getting started.\nTens of systems: the batched approach catches up.\nA thousand systems: the batched approach on a laptop GPU spends about one-fortieth as long per puzzle as the one-at-a-time solver, and its plans are slightly more accurate too. Even running the batched approach on an ordinary CPU, it’s about three times faster than looping.\nTen thousand systems: something new happens…"
+    "objectID": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
+    "href": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Tracing the efficient frontier",
+    "text": "Tracing the efficient frontier\nRather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.\nIf you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the efficient frontier. Every point on it is a portfolio where you can’t get more expected return without accepting more risk. Any portfolio below the curve is leaving money on the table.\nTwo things make tracing this curve quicker:\n\nWarm starts. Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn’t change the best portfolio completely, so starting nearby saves a lot of work.\nReusing the setup. The problem is described once, and only the wobble limit changes between solves."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "The slowest member of the band",
-    "text": "The slowest member of the band\nRemember the marching band? The band only finishes when its slowest member finishes. In a fleet of ten thousand, there are always a few chains in a tricky spot, perhaps just shoved past the edge of their safe zone, and their puzzles take longer to solve. Everyone else ends up waiting for them.\nThe fix is something every real controller needs anyway: a deadline. We give the solver a fixed amount of effort per step. Any system that hasn’t fully finished by then simply uses the best plan it has so far. Because Jaddle always keeps its answers within the motor limits as it works, even an unfinished plan never asks a motor to do the impossible.\nWith a deadline in place, the time per puzzle for ten thousand systems drops back down near its best."
+    "objectID": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
+    "href": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "The slope tells a story",
+    "text": "The slope tells a story\nEvery time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: “If I allowed a little more wobble, how much extra return would I get?”\nThat’s precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you’re being very cautious, accepting a bit more risk buys you a healthy boost in return. When you’re already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
-    "href": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Do they agree?",
-    "text": "Do they agree?\nSpeed is no use if the answers are wrong. So we check both approaches against a reference answer solved to extremely high accuracy. Both are close, and over the whole run, the two fleets end up with nearly identical total costs. The blocks stay calm, the motors stay within their limits, and the chains settle down in both cases."
+    "objectID": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
+    "href": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "What the portfolios look like",
+    "text": "What the portfolios look like\nAt the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.\nAs the limit loosens, the portfolio concentrates on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
-    "title": "Herding a Thousand Springy Robots",
+    "objectID": "posts/portfolio/portfolio.html#checking-our-work",
+    "href": "posts/portfolio/portfolio.html#checking-our-work",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Checking our work",
+    "text": "Checking our work\nTo make sure Jaddle’s answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#the-takeaway",
+    "href": "posts/portfolio/portfolio.html#the-takeaway",
+    "title": "How Much Wobble Can You Handle?",
     "section": "The takeaway",
-    "text": "The takeaway\nThis example isn’t saying “always use a GPU”. If you’re controlling one robot and need an answer within a strict fraction of a millisecond, a traditional CPU solver is still the right tool.\nBut a surprising number of real problems involve lots of similar decisions at once: a fleet of delivery robots, a wind farm full of turbines, or testing one controller against thousands of possible futures to see how it copes. In those cases, it’s worth asking the marching-band question: could all of these take the same step together? When the answer is yes, solving them side by side can be dramatically faster than solving them one at a time."
+    "text": "The takeaway\nInvesting well isn’t just about picking winners. It’s about understanding how your choices wobble together. By describing risk as the size of an arrow, and using a solver that’s comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html",
+    "href": "posts/robust-kalman/robust-kalman.html",
+    "title": "Ignoring the Fibbers",
+    "section": "",
+    "text": "Imagine you’re trying to follow a remote-controlled boat drifting around a pond, but you can’t see it directly. Instead, a friend on the bank shouts out its position every few seconds. Most of the time they’re pretty accurate, give or take a little. But your friend is easily distracted, and about one time in five they shout out something completely off, as if they’d glanced at a duck instead.\nCan you still work out where the boat actually went?"
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
+    "href": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
+    "title": "Ignoring the Fibbers",
+    "section": "Two sources of information",
+    "text": "Two sources of information\nYou have two things to go on:\n\nThe measurements, your friend’s shouted positions. Most are close; some are wild.\nThe physics. Boats don’t teleport. They glide along, speeding up and slowing down smoothly, nudged now and then by gusts of wind you can’t predict.\n\nThe trick is to combine them. You’re looking for a path that obeys the physics and stays reasonably close to the measurements. If a measurement says the boat jumped five metres to the left in an instant, the physics says “that’s not possible”, and the path should mostly ignore it.\nFinding the best such path, after the fact, using all the measurements at once, is called smoothing."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
+    "href": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
+    "title": "Ignoring the Fibbers",
+    "section": "The classic recipe: the Kalman smoother",
+    "text": "The classic recipe: the Kalman smoother\nIn the 1960s, Rudolf Kalman developed a beautifully efficient method for exactly this kind of problem. Versions of his ideas helped steer the Apollo spacecraft to the Moon, and today they run inside phones, cars, drones and countless other gadgets.\nThe classic approach chooses the path that keeps two things small at once:\n\nthe wind gusts needed to explain the path (smaller gusts mean a more natural path), and\nthe misses, the gaps between the path and each measurement.\n\nTo combine all the misses into one number, it squares each one and adds them up. Squaring makes sense when errors are small and well-behaved: it treats misses in either direction equally and is very convenient mathematically."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
+    "href": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
+    "title": "Ignoring the Fibbers",
+    "section": "The problem with squaring",
+    "text": "The problem with squaring\nSquaring has a weakness. A miss that’s twice as big counts four times as much. A miss that’s twenty times as big counts four hundred times as much.\nIn our example, the occasional wild measurement is about twenty times noisier than a normal one. So when the classic smoother tries to keep the squared misses small, those few wild measurements dominate everything. They act like bullies, dragging the estimated path towards themselves, because ignoring them would be “too expensive”.\nIt’s a bit like a teacher averaging test scores where one student’s answer of “a million” for a question with answer “seven” drags the class average into the stratosphere."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
+    "href": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
+    "title": "Ignoring the Fibbers",
+    "section": "A fairer referee: the Huber penalty",
+    "text": "A fairer referee: the Huber penalty\nThe fix is to change how misses are scored. Instead of squaring every miss, we use the Huber penalty, named after the statistician Peter Huber:\n\nFor small misses, it behaves just like squaring. Normal, everyday noise is treated exactly as before.\nFor big misses, it switches to growing in a straight line. A miss twice as big costs only about twice as much, not four times.\n\n\n\n\n\n\n\nTipA helpful way to picture it\n\n\n\nThe squared penalty is like a rubber band that pulls harder and harder the further you stretch it. The Huber penalty is a rubber band that, beyond a certain point, stops getting stronger and just pulls with a steady force. Wild measurements still tug on the path, but they can no longer yank it off course.\n\n\nThis version is called the robust Kalman smoother. “Robust”, in statistics, means “doesn’t fall apart when some of the data is bad”."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-experiment",
+    "href": "posts/robust-kalman/robust-kalman.html#the-experiment",
+    "title": "Ignoring the Fibbers",
+    "section": "The experiment",
+    "text": "The experiment\nWe simulate an object moving around a flat plane for 50 seconds, measured 1,000 times. It has a position and a speed, a little friction slowing it down, and random pushes knocking it around. Each measurement has a one-in-five chance of being an outlier.\nThen we estimate the path twice: once with the classic smoother and once with the robust one.\nThe results are striking. The classic smoother’s path is visibly dragged around by the outliers, wandering off towards the wild measurements. The robust smoother’s path sticks closely to the true trajectory, as if it had simply noticed which shouts to take with a pinch of salt."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
+    "href": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
+    "title": "Ignoring the Fibbers",
+    "section": "What Jaddle does differently",
+    "text": "What Jaddle does differently\nBoth versions of the problem are written in CVXPY, a popular language for describing optimisation problems. In fact, this is one of CVXPY’s own showcase examples.\nThe classic smoother is a relatively simple kind of problem (a quadratic program), and Jaddle solves it directly.\nThe robust version is more interesting. Normally CVXPY would translate the Huber penalty into a bundle of cone-shaped rules, which works but makes the problem bigger and more complicated. Jaddle takes a different route: it keeps the Huber penalty as the smooth, gently curving function it really is, and solves the problem in that form. It also notices that the “miss” for each measurement is completely determined by the path, so it can drop those as separate unknowns and work with the path alone. Fewer moving parts, same answer.\nWe check both of Jaddle’s answers against Clarabel, a well-established solver that comes with CVXPY, and they agree."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-takeaway",
+    "href": "posts/robust-kalman/robust-kalman.html#the-takeaway",
+    "title": "Ignoring the Fibbers",
+    "section": "The takeaway",
+    "text": "The takeaway\nReal-world data is rarely perfectly behaved. Sensors glitch, signals bounce, people mishear. A method that assumes every measurement is roughly right can be thrown badly off course by a handful that aren’t.\nBy changing one small thing, how we score big misses, the robust Kalman smoother learns to listen to the crowd without being bullied by the loudest fibbers. It’s a good lesson beyond boats and ponds: when you’re combining lots of evidence, make sure no single piece gets to shout over all the rest."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "",
+    "text": "Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say “yes” or “no”. To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: learn to do what they did.\nThat sounds sensible. But there is a catch. What if the old decisions were unfair?"
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "A world with a thumb on the scale",
+    "text": "A world with a thumb on the scale\nIn this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we’ll call Group A and Group B. About three in ten applicants belong to Group B.\nEvery applicant has a few “skill” scores, things like income stability or repayment history. Here is the important part: the skills are spread out in exactly the same way in both groups. Nobody in Group B is any less capable, on average, than anyone in Group A.\nIn a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.\nSo the pile of old decisions, the one we’re asking the computer to learn from, quietly contains a bias."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "“Just don’t tell it the group!”",
+    "text": "“Just don’t tell it the group!”\nThe first idea most people have is simple: don’t show the computer which group each applicant is in. If it can’t see the group, surely it can’t discriminate?\nSadly, it isn’t that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call proxies: clues that let you guess the group without being told.\nA computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of “postcode” were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a negative weight on those postcode-like features and approves Group B applicants far less often than Group A.\n\n\n\n\n\n\nNoteThe lesson\n\n\n\nHiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "How the robot banker thinks",
+    "text": "How the robot banker thinks\nThe model we use is called logistic regression, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:\n\nEach feature (each skill score, each postcode detail) earns or loses the applicant some points.\nThe points are added up into a single score.\nIf the score is above zero, the answer is “yes”. Below zero, “no”.\n\n“Learning” just means adjusting how many points each feature is worth until the model’s answers match the training data as closely as possible. Finding the best point values is an optimisation problem: a search for the settings that make some measure of error as small as it can be."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "Adding a fairness rule",
+    "text": "Adding a fairness rule\nTo push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is demographic parity: both groups should be approved at the same rate.\nThere is a small snag. Approval rates jump in steps: one applicant flips from “no” to “yes” and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:\n\nThe model’s average score shouldn’t depend on which group you’re in.\n\nWe also add a dial, which we’ll call the fairness bound. Turn the dial all the way up and there’s no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "What we found",
+    "text": "What we found\nWe trained two models: one with no fairness rule, and one with the dial at zero.\nThe fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:\n\nMeasured against the biased historical decisions, the fair model looks worse. Of course it does: it is refusing to copy the bias.\nMeasured against the fair decisions (the ones that depend only on skill), the fair model looks better.\n\nIn real life we would never get to see those “fair decisions”. We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then “accuracy against the past” can be a misleading report card."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "The whole trade-off in one go",
+    "text": "The whole trade-off in one go\nOne fair model and one unfair model only tell part of the story. What about all the settings in between?\nWe picked 40 different positions for the fairness dial and asked Jaddle, the optimisation library this example is built with, to train all 40 models at the same time, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.\nReading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "The price of fairness",
+    "text": "The price of fairness\nHere is my favourite part. When an optimiser obeys a rule, it can also tell you how much that rule is costing. Mathematicians call this a dual variable or shadow price. Think of it as a receipt that comes with each answer, saying: “if you tightened this rule by one more notch, the training error would go up by this much.”\nFor our fairness rule, that receipt is a price of fairness. We found that:\n\nWhen the dial is loose enough that the rule isn’t actually stopping anything, the price is zero. The rule is just along for the ride.\nAs the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.\n\nThat’s useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is “worth it”, you can see the actual exchange rate and talk about it openly."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "A few footnotes",
+    "text": "A few footnotes\nFairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.\n\nDemographic parity is only one definition of fairness. Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.\nOur world is made up. Real data is messier, and real bias is rarely a single fixed penalty.\nThe rule we used is a stand-in. Making average scores equal tends to bring approval rates together, but it doesn’t guarantee they match exactly."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "The takeaway",
+    "text": "The takeaway\nA model trained to imitate the past will happily imitate the past’s mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open."
   },
   {
     "objectID": "posts/max-cut/max-cut.html",

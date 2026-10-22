@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/how-jaddle-works/how_jaddle_works.html",
       "/posts/portfolio/portfolio.html",
       "/posts/battery-sizing/battery-sizing.html",
       "/posts/robust-kalman/robust-kalman.html",

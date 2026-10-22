@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Brendan van Rooyen">
+<meta name="dcterms.date" content="2026-10-22">
+<meta name="description" content="An explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.">
+
+<title>How Jaddle Works – Jaddle</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../jaddle_logo_no_text_square.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-dcb79511a1611135d60367e3fe4b3933.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<style>html{ scroll-behavior: smooth; }</style>
+<script type="module" src="../../site_libs/quarto-ojs/quarto-ojs-runtime.js"></script>
+<link href="../../site_libs/quarto-ojs/quarto-ojs.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="How Jaddle Works – Jaddle">
+<meta property="og:description" content="An explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.">
+<meta property="og:image" content="https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how-jaddle-works-logo.svg">
+<meta property="og:site_name" content="Jaddle">
+<meta name="twitter:title" content="How Jaddle Works – Jaddle">
+<meta name="twitter:description" content="An explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.">
+<meta name="twitter:image" content="https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how-jaddle-works-logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../jaddle_logo_no_text_square.png" alt="Jaddle" class="navbar-logo light-content">
+    <img src="../../jaddle_logo_no_text_square.png" alt="Jaddle" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Jaddle</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/BrendanVR/Jaddle"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">How Jaddle Works</h1>
+            <p class="subtitle lead">A shopper, a referee, a horse saddle and a few clever tricks</p>
+                  <div>
+        <div class="description">
+          An explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.
+        </div>
+      </div>
+                </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Brendan van Rooyen </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">October 22, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul class="collapse">
+  <li><a href="#what-problem-are-we-solving" id="toc-what-problem-are-we-solving" class="nav-link active" data-scroll-target="#what-problem-are-we-solving">What problem are we solving?</a></li>
+  <li><a href="#turn-rules-into-fines-dualising-and-the-lagrangian" id="toc-turn-rules-into-fines-dualising-and-the-lagrangian" class="nav-link" data-scroll-target="#turn-rules-into-fines-dualising-and-the-lagrangian">1. Turn rules into fines (dualising and the Lagrangian)</a></li>
+  <li><a href="#take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent" id="toc-take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent" class="nav-link" data-scroll-target="#take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent">2. Take turns walking downhill and uphill (alternating gradient descent–ascent)</a></li>
+  <li><a href="#the-average-is-smarter-than-the-walker-averaging" id="toc-the-average-is-smarter-than-the-walker-averaging" class="nav-link" data-scroll-target="#the-average-is-smarter-than-the-walker-averaging">3. The average is smarter than the walker (averaging)</a></li>
+  <li><a href="#choosing-step-sizes-eta-k-t-and-s" id="toc-choosing-step-sizes-eta-k-t-and-s" class="nav-link" data-scroll-target="#choosing-step-sizes-eta-k-t-and-s">4. Choosing step sizes: <span class="math inline">\(\eta\)</span>, <span class="math inline">\(k\)</span>, <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span></a></li>
+  <li><a href="#restarts-when-in-doubt-start-fresh" id="toc-restarts-when-in-doubt-start-fresh" class="nav-link" data-scroll-target="#restarts-when-in-doubt-start-fresh">5. Restarts: when in doubt, start fresh</a></li>
+  <li><a href="#putting-it-all-together" id="toc-putting-it-all-together" class="nav-link" data-scroll-target="#putting-it-all-together">Putting it all together</a></li>
+  <li><a href="#cheat-sheet" id="toc-cheat-sheet" class="nav-link" data-scroll-target="#cheat-sheet">Cheat sheet</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Warning: nerd content ahead!
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This article is a bit nerdy. There are equations, Greek letters and at least one joke about horse saddles. You don’t need to understand every symbol: the words around each equation say what it means in plain language. If an equation looks scary, read the sentence after it and keep going.</p>
+<p>You have been warned. Be prepared!</p>
+</div>
+</div>
+<section id="what-problem-are-we-solving" class="level2">
+<h2 class="anchored" data-anchor-id="what-problem-are-we-solving">What problem are we solving?</h2>
+<p>Jaddle is a program that solves <strong>optimisation problems</strong>. That means: pick some numbers so that something is as small (or as big) as possible, while following a set of rules.</p>
+<p>Here is a tiny one. You are baking. Flour costs $2 a kilo, and your recipe needs <strong>at least 3 kilos</strong>. How much flour should you buy to spend as little as possible?</p>
+<p>You already know the answer: buy exactly 3 kilos and spend $6. Easy.</p>
+<p>Now imagine an airline planning thousands of flights, a power company deciding which power stations to switch on, or a delivery company routing hundreds of trucks. These problems have millions of numbers to choose and millions of rules to follow. Nobody can eyeball those. We need a recipe that a computer can follow, step by step, and that recipe is what this article is about.</p>
+<p>Mathematicians write this kind of problem (a <strong>linear program</strong>) like this:</p>
+<p><span class="math display">\[
+\text{minimise } c^\top x \quad \text{such that} \quad Ax \le b, \quad \ell \le x \le u
+\]</span></p>
+<p>In words:</p>
+<ul>
+<li><span class="math inline">\(x\)</span> is the list of numbers we get to choose (how much of each thing to buy).</li>
+<li><span class="math inline">\(c\)</span> is the list of prices, and <span class="math inline">\(c^\top x = c_1 x_1 + c_2 x_2 + \dots\)</span> is the total cost.</li>
+<li>Each row of <span class="math inline">\(Ax \le b\)</span> is one rule (“you need at least this much of that”).</li>
+<li><span class="math inline">\(\ell \le x \le u\)</span> are simple limits on each number, like “you can’t buy a negative amount of flour”.</li>
+</ul>
+<p>For the flour problem there is just one number, <span class="math inline">\(x\)</span> = kilos of flour. The cost is <span class="math inline">\(2x\)</span>, the rule is <span class="math inline">\(x \ge 3\)</span> (which we can write as <span class="math inline">\(3 - x \le 0\)</span>) and the limit is <span class="math inline">\(x \ge 0\)</span>.</p>
+<p>Jaddle solves these problems in five big ideas. Let’s go through them one at a time.</p>
+</section>
+<section id="turn-rules-into-fines-dualising-and-the-lagrangian" class="level2">
+<h2 class="anchored" data-anchor-id="turn-rules-into-fines-dualising-and-the-lagrangian">1. Turn rules into fines (dualising and the Lagrangian)</h2>
+<p>Rules are awkward for computers. They act like invisible walls, and walls are hard to deal with when there are millions of them.</p>
+<p>So we play a trick: <strong>we replace every rule with a fine.</strong></p>
+<p>Imagine a <strong>referee</strong> who watches the shopper. For each rule, the referee chooses a fine, <span class="math inline">\(y\)</span>, to charge for every kilo you are short. If you buy <span class="math inline">\(x\)</span> kilos you are <span class="math inline">\(3 - x\)</span> kilos short, so the fine is <span class="math inline">\(y \times (3 - x)\)</span>. Your total bill becomes</p>
+<p><span class="math display">\[
+L(x, y) = \underbrace{2x}_{\text{cost of flour}} + \underbrace{y\,(3 - x)}_{\text{fine for being short}}
+\]</span></p>
+<p>This bill has a famous name: the <strong>Lagrangian</strong>, after Joseph-Louis Lagrange, a mathematician from the 1700s. For any linear program it looks like this:</p>
+<p><span class="math display">\[
+L(x, y) = c^\top x + y^\top (A x - b), \qquad y \ge 0
+\]</span></p>
+<p>There is one fine for each rule, and the list of fines <span class="math inline">\(y\)</span> is called the <strong>dual variables</strong>. (The shopper’s numbers <span class="math inline">\(x\)</span> are the <strong>primal variables</strong>.) Swapping rules for fines like this is called <strong>dualising the constraints</strong>. Fines can’t be negative, because a referee doesn’t pay you for breaking a rule. If you have <em>extra</em> flour, <span class="math inline">\(3 - x\)</span> is negative, and the referee’s best move is to set the fine to zero. (Rules of the form “exactly equal to” also work. Their fines are allowed to be negative.)</p>
+<section id="a-game-with-two-players" class="level3">
+<h3 class="anchored" data-anchor-id="a-game-with-two-players">A game with two players</h3>
+<p>Now we have a game:</p>
+<ul>
+<li>The <strong>shopper</strong> chooses <span class="math inline">\(x\)</span> and wants the bill <span class="math inline">\(L\)</span> to be <strong>as small as possible</strong>.</li>
+<li>The <strong>referee</strong> chooses <span class="math inline">\(y\)</span> and wants the bill <span class="math inline">\(L\)</span> to be <strong>as big as possible</strong>.</li>
+</ul>
+<p><span class="math display">\[
+\min_{x} \; \max_{y \ge 0} \; L(x, y)
+\]</span></p>
+<p>Why does this game give the same answer as the original problem? If the shopper breaks the rule, the referee can make the fine enormous, so breaking the rule is a terrible idea. If the shopper follows the rule, the fine does nothing. The shopper’s best move is to follow the rules and spend as little as possible, which is exactly the original problem. The difference is that there are no walls any more, just a bill to push down and fines to push up.</p>
+</section>
+<section id="the-saddle-point" class="level3">
+<h3 class="anchored" data-anchor-id="the-saddle-point">The saddle point</h3>
+<p>For the flour problem the game ends at <span class="math inline">\(x = 3\)</span> and <span class="math inline">\(y = 2\)</span>. Check it:</p>
+<ul>
+<li>If the referee sets <span class="math inline">\(y = 2\)</span>, the bill is <span class="math inline">\(2x + 2(3 - x) = 6\)</span> whatever <span class="math inline">\(x\)</span> is. The shopper can’t do any better by changing <span class="math inline">\(x\)</span>.</li>
+<li>If the shopper buys <span class="math inline">\(x = 3\)</span>, the bill is <span class="math inline">\(6 + y \times 0 = 6\)</span> whatever <span class="math inline">\(y\)</span> is. The referee can’t do any better by changing <span class="math inline">\(y\)</span>.</li>
+</ul>
+<p>Neither player wants to move. This spot is called a <strong>saddle point</strong>, because the bill looks like a horse saddle. Along the horse’s back the saddle curves <em>up</em> on both sides, so the middle is the lowest point (what the shopper wants). Across the horse it curves <em>down</em> on both sides, so the middle is the highest point (what the referee wants). The middle of a saddle is the lowest point one way and the highest point the other way.</p>
+<p>That is where the name comes from: <strong>Jaddle</strong> = <strong>J</strong>AX + s<strong>addle</strong>.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Bonus: fines are prices
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The answer <span class="math inline">\(y = 2\)</span> means something. If your recipe needed one <em>more</em> kilo, your cost would go up by exactly $2. The referee’s fine tells you how much each rule costs you. On big problems this is very useful: it tells a company which of its rules are the expensive ones.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent" class="level2">
+<h2 class="anchored" data-anchor-id="take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent">2. Take turns walking downhill and uphill (alternating gradient descent–ascent)</h2>
+<p>How do the shopper and the referee find the saddle point? They feel which way the ground slopes and take small steps.</p>
+<p>The <strong>gradient</strong> is the slope: it says which direction is uphill and how steep it is. For the flour bill the slopes are</p>
+<p><span class="math display">\[
+\frac{\partial L}{\partial x} = 2 - y, \qquad \frac{\partial L}{\partial y} = 3 - x
+\]</span></p>
+<p>These say something sensible:</p>
+<ul>
+<li>If the fine <span class="math inline">\(y\)</span> is less than $2, flour costs more than the fine it saves you, so the shopper wants to buy <strong>less</strong>.</li>
+<li>If <span class="math inline">\(x\)</span> is less than 3, the shopper is short of flour, so the referee wants to make the fine <strong>bigger</strong>.</li>
+</ul>
+<p>For any linear program the slopes are <span class="math inline">\(c + A^\top y\)</span> for the shopper and <span class="math inline">\(Ax - b\)</span> for the referee.</p>
+<p>The shopper walks <strong>downhill</strong> (makes the bill smaller) and the referee walks <strong>uphill</strong> (makes the bill bigger). They take turns, and the referee always reacts to the shopper’s <em>newest</em> choice. That is why it is called <strong>alternating</strong>:</p>
+<p><span class="math display">\[
+x_{\text{new}} = \text{clip}\Big(x - \tau\,\big(c + A^\top y\big)\Big)
+\]</span></p>
+<p><span class="math display">\[
+y_{\text{new}} = \max\Big(0,\; y + \sigma\,\big(A x_{\text{new}} - b\big)\Big)
+\]</span></p>
+<p>Here <span class="math inline">\(\tau\)</span> (tau) and <span class="math inline">\(\sigma\)</span> (sigma) are <strong>step sizes</strong>: how far each player moves per turn. “clip” pushes <span class="math inline">\(x\)</span> back inside its limits, and <span class="math inline">\(\max(0, \cdot)\)</span> stops fines going negative.</p>
+<p>Each turn only needs two multiplications by the big table of rules: one by <span class="math inline">\(A\)</span> and one by its flipped version <span class="math inline">\(A^\top\)</span>. That is cheap even when <span class="math inline">\(A\)</span> has millions of rows, and graphics cards (GPUs) are very good at it. Methods that only use slopes like this are called <strong>first-order methods</strong>.</p>
+<section id="try-it" class="level3">
+<h3 class="anchored" data-anchor-id="try-it">Try it</h3>
+<p>Drag the sliders and watch the shopper and referee move. Each blue dot is one turn. Both start at zero.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb1" data-startfrom="197" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 196;"><span id="cb1-197"><a href="#cb1-197" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">simulate</span>(eta<span class="op">,</span> n) {</span>
+<span id="cb1-198"><a href="#cb1-198" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> x <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> y <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> sx <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> sy <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb1-199"><a href="#cb1-199" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> pts <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb1-200"><a href="#cb1-200" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">1</span><span class="op">;</span> i <span class="op">&lt;=</span> n<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb1-201"><a href="#cb1-201" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> x <span class="op">-</span> eta <span class="op">*</span> (<span class="dv">2</span> <span class="op">-</span> y))<span class="op">;</span>   <span class="co">// shopper walks downhill</span></span>
+<span id="cb1-202"><a href="#cb1-202" aria-hidden="true" tabindex="-1"></a>    y <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> y <span class="op">+</span> eta <span class="op">*</span> (<span class="dv">3</span> <span class="op">-</span> x))<span class="op">;</span>   <span class="co">// referee walks uphill</span></span>
+<span id="cb1-203"><a href="#cb1-203" aria-hidden="true" tabindex="-1"></a>    sx <span class="op">+=</span> x<span class="op">;</span> sy <span class="op">+=</span> y<span class="op">;</span></span>
+<span id="cb1-204"><a href="#cb1-204" aria-hidden="true" tabindex="-1"></a>    pts<span class="op">.</span><span class="fu">push</span>({i<span class="op">,</span> x<span class="op">,</span> y<span class="op">,</span> <span class="dt">ax</span><span class="op">:</span> sx <span class="op">/</span> i<span class="op">,</span> <span class="dt">ay</span><span class="op">:</span> sy <span class="op">/</span> i})<span class="op">;</span></span>
+<span id="cb1-205"><a href="#cb1-205" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-206"><a href="#cb1-206" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> pts<span class="op">;</span></span>
+<span id="cb1-207"><a href="#cb1-207" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb2" data-startfrom="211" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 210;"><span id="cb2-211"><a href="#cb2-211" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">saddlePlot</span>(pts<span class="op">,</span> showAvg) {</span>
+<span id="cb2-212"><a href="#cb2-212" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> marks <span class="op">=</span> [</span>
+<span id="cb2-213"><a href="#cb2-213" aria-hidden="true" tabindex="-1"></a>    Plot<span class="op">.</span><span class="fu">line</span>(pts<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"x"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"y"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#4c78a8"</span><span class="op">,</span> <span class="dt">strokeOpacity</span><span class="op">:</span> <span class="fl">0.45</span>})<span class="op">,</span></span>
+<span id="cb2-214"><a href="#cb2-214" aria-hidden="true" tabindex="-1"></a>    Plot<span class="op">.</span><span class="fu">dot</span>(pts<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"x"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"y"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="fl">2.5</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"#4c78a8"</span>})</span>
+<span id="cb2-215"><a href="#cb2-215" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb2-216"><a href="#cb2-216" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (showAvg) {</span>
+<span id="cb2-217"><a href="#cb2-217" aria-hidden="true" tabindex="-1"></a>    marks<span class="op">.</span><span class="fu">push</span>(Plot<span class="op">.</span><span class="fu">line</span>(pts<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"ax"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"ay"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#f58518"</span><span class="op">,</span> <span class="dt">strokeWidth</span><span class="op">:</span> <span class="fl">2.5</span>}))<span class="op">;</span></span>
+<span id="cb2-218"><a href="#cb2-218" aria-hidden="true" tabindex="-1"></a>    marks<span class="op">.</span><span class="fu">push</span>(Plot<span class="op">.</span><span class="fu">dot</span>(pts<span class="op">.</span><span class="fu">slice</span>(<span class="op">-</span><span class="dv">1</span>)<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"ax"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"ay"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">6</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"#f58518"</span>}))<span class="op">;</span></span>
+<span id="cb2-219"><a href="#cb2-219" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-220"><a href="#cb2-220" aria-hidden="true" tabindex="-1"></a>  marks<span class="op">.</span><span class="fu">push</span>(Plot<span class="op">.</span><span class="fu">dot</span>([{<span class="dt">x</span><span class="op">:</span> <span class="dv">3</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="dv">2</span>}]<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"x"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"y"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">7</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"#e45756"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"white"</span>}))<span class="op">;</span></span>
+<span id="cb2-221"><a href="#cb2-221" aria-hidden="true" tabindex="-1"></a>  marks<span class="op">.</span><span class="fu">push</span>(Plot<span class="op">.</span><span class="fu">text</span>([{<span class="dt">x</span><span class="op">:</span> <span class="dv">3</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="dv">2</span>}]<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"x"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"y"</span><span class="op">,</span> <span class="dt">text</span><span class="op">:</span> d <span class="kw">=&gt;</span> <span class="st">"saddle point (3, 2)"</span><span class="op">,</span> <span class="dt">dy</span><span class="op">:</span> <span class="op">-</span><span class="dv">14</span>}))<span class="op">;</span></span>
+<span id="cb2-222"><a href="#cb2-222" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb2-223"><a href="#cb2-223" aria-hidden="true" tabindex="-1"></a>    <span class="dt">width</span><span class="op">:</span> <span class="dv">520</span><span class="op">,</span></span>
+<span id="cb2-224"><a href="#cb2-224" aria-hidden="true" tabindex="-1"></a>    <span class="dt">height</span><span class="op">:</span> <span class="dv">420</span><span class="op">,</span></span>
+<span id="cb2-225"><a href="#cb2-225" aria-hidden="true" tabindex="-1"></a>    <span class="dt">grid</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-226"><a href="#cb2-226" aria-hidden="true" tabindex="-1"></a>    <span class="dt">x</span><span class="op">:</span> {<span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> <span class="fl">6.5</span>]<span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"x = kilos of flour (shopper) →"</span>}<span class="op">,</span></span>
+<span id="cb2-227"><a href="#cb2-227" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y</span><span class="op">:</span> {<span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> <span class="fl">5.5</span>]<span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ y = fine per missing kilo (referee)"</span>}<span class="op">,</span></span>
+<span id="cb2-228"><a href="#cb2-228" aria-hidden="true" tabindex="-1"></a>    marks</span>
+<span id="cb2-229"><a href="#cb2-229" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb2-230"><a href="#cb2-230" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb3" data-startfrom="235" data-source-offset="-0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 234;"><span id="cb3-235"><a href="#cb3-235" aria-hidden="true" tabindex="-1"></a>viewof eta1 <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="fl">0.05</span><span class="op">,</span> <span class="fl">1.2</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="fl">0.3</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="fl">0.05</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Step size"</span>})</span>
+<span id="cb3-236"><a href="#cb3-236" aria-hidden="true" tabindex="-1"></a>viewof n1 <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">5</span><span class="op">,</span> <span class="dv">300</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="dv">60</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">5</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Number of turns"</span>})</span>
+<span id="cb3-237"><a href="#cb3-237" aria-hidden="true" tabindex="-1"></a><span class="fu">saddlePlot</span>(<span class="fu">simulate</span>(eta1<span class="op">,</span> n1)<span class="op">,</span> <span class="kw">false</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-3" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+<p>Did you spot the problem? <strong>They go round in circles!</strong> The shopper reacts to the referee, the referee reacts to the shopper, and they chase each other around the saddle point like two kids running around a table. Neither ever catches the other. Smaller steps make smoother circles, but they are still circles.</p>
+<p>The good news is in the picture too: the circles go <em>around</em> the answer.</p>
+</section>
+</section>
+<section id="the-average-is-smarter-than-the-walker-averaging" class="level2">
+<h2 class="anchored" data-anchor-id="the-average-is-smarter-than-the-walker-averaging">3. The average is smarter than the walker (averaging)</h2>
+<p>What is in the middle of a circle? The centre! And if you take lots of points spread evenly around a circle and average them, you land near the centre.</p>
+<p>So Jaddle keeps a running <strong>average</strong> of everywhere the players have been. Write <span class="math inline">\(z = (x, y)\)</span> for both players’ positions together. After <span class="math inline">\(N\)</span> turns the average is</p>
+<p><span class="math display">\[
+\bar z_N = \frac{\eta_1 z_1 + \eta_2 z_2 + \dots + \eta_N z_N}{\eta_1 + \eta_2 + \dots + \eta_N}
+\]</span></p>
+<p>Each position is weighted by the step size <span class="math inline">\(\eta_n\)</span> used to reach it (more on <span class="math inline">\(\eta\)</span> in the next section), so bigger steps count for more. Jaddle doesn’t store every old position. It nudges the average a little towards each new point, which costs almost nothing.</p>
+<p>Think of a dog on a lead running in circles around a post. Take a photo every second and average the dog’s position over all the photos: you get the post.</p>
+<p>The orange line below is the average. Turn up the number of turns and watch it home in on the answer.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb4" data-startfrom="273" data-source-offset="-0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 272;"><span id="cb4-273"><a href="#cb4-273" aria-hidden="true" tabindex="-1"></a>viewof eta2 <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="fl">0.05</span><span class="op">,</span> <span class="fl">1.2</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="fl">0.3</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="fl">0.05</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Step size"</span>})</span>
+<span id="cb4-274"><a href="#cb4-274" aria-hidden="true" tabindex="-1"></a>viewof n2 <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">5</span><span class="op">,</span> <span class="dv">300</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="dv">150</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">5</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Number of turns"</span>})</span>
+<span id="cb4-275"><a href="#cb4-275" aria-hidden="true" tabindex="-1"></a><span class="fu">saddlePlot</span>(<span class="fu">simulate</span>(eta2<span class="op">,</span> n2)<span class="op">,</span> <span class="kw">true</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-3" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+<p>There is a catch. The average gets there <strong>slowly</strong>: to be 10 times more accurate you need about 10 times more turns. It also never forgets. The very first guesses, which were far from the answer, keep dragging the average away forever. We fix both problems in section 5.</p>
+</section>
+<section id="choosing-step-sizes-eta-k-t-and-s" class="level2">
+<h2 class="anchored" data-anchor-id="choosing-step-sizes-eta-k-t-and-s">4. Choosing step sizes: <span class="math inline">\(\eta\)</span>, <span class="math inline">\(k\)</span>, <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span></h2>
+<p>Steps that are too big overshoot and fly off. Steps that are too small take forever. Worse, different numbers in the same problem can need very different step sizes. One might be measured in millimetres and another in kilometres.</p>
+<p>Jaddle builds every step size out of four pieces:</p>
+<p><span class="math display">\[
+\tau_j = \frac{\eta}{k}\, t_j \qquad\qquad \sigma_i = \eta\, k\, s_i
+\]</span></p>
+<p><span class="math inline">\(\tau_j\)</span> is the step for the shopper’s <span class="math inline">\(j\)</span>-th number, and <span class="math inline">\(\sigma_i\)</span> is the step for the referee’s <span class="math inline">\(i\)</span>-th fine. Think of a group out on a hike:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Piece</th>
+<th>Who it affects</th>
+<th>Hiking version</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(\eta\)</span> (eta)</td>
+<td>everyone</td>
+<td>how fast the whole group walks</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(k\)</span></td>
+<td>shopper vs.&nbsp;referee</td>
+<td>whether the shopper team or the referee team walks faster</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(t_j\)</span></td>
+<td>the shopper’s <span class="math inline">\(j\)</span>-th number</td>
+<td>how long one shopper’s stride is</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(s_i\)</span></td>
+<td>the referee’s <span class="math inline">\(i\)</span>-th fine</td>
+<td>how long one referee’s stride is</td>
+</tr>
+</tbody>
+</table>
+<p>Before any of this starts, Jaddle <strong>rescales</strong> the problem so that the numbers in <span class="math inline">\(A\)</span>, <span class="math inline">\(b\)</span> and <span class="math inline">\(c\)</span> are all roughly the same size. It is a bit like converting every measurement to the same units. (The methods are called Ruiz and Pock–Chambolle scaling, if you want to look them up.) On top of that, <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span> start at 1 and are then <strong>adapted</strong> as the solver learns more about the problem. Giving each number its own multiplier like this is called <strong>diagonal preconditioning</strong>: “diagonal” because if you wrote the multipliers into a table, they would only appear along its diagonal.</p>
+<section id="eta-a-step-that-checks-itself" class="level3">
+<h3 class="anchored" data-anchor-id="eta-a-step-that-checks-itself"><span class="math inline">\(\eta\)</span>: a step that checks itself</h3>
+<p>Nobody tells Jaddle the right step size. It works it out as it goes, like this.</p>
+<p><strong>Take a trial step.</strong> Then measure two things:</p>
+<p><span class="math display">\[
+\text{movement} = k\,\lVert \Delta x\rVert^2 + \frac{1}{k}\,\lVert \Delta y \rVert^2
+\qquad\qquad
+\text{interaction} = \big|\,\Delta y^\top A\, \Delta x\,\big|
+\]</span></p>
+<p><span class="math inline">\(\Delta x\)</span> and <span class="math inline">\(\Delta y\)</span> are how much each player changed, and <span class="math inline">\(\lVert \Delta x \rVert^2\)</span> means “square each change and add them up”. The <strong>movement</strong> is how far the players went. The <strong>interaction</strong> is how hard their two moves pushed against each other through the rules in <span class="math inline">\(A\)</span>.</p>
+<p>The interaction is what causes trouble. When the shopper’s move and the referee’s move push on each other too hard, they overreact and fly off. When the moves are big compared with how much they disturb each other, the step is safe. The largest safe step is</p>
+<p><span class="math display">\[
+\bar\eta = \frac{\text{movement}}{2 \times \text{interaction}}
+\]</span></p>
+<ul>
+<li><strong>If <span class="math inline">\(\eta\)</span> was bigger than <span class="math inline">\(\bar\eta\)</span></strong>, the step was too greedy. Jaddle throws it away, shrinks <span class="math inline">\(\eta\)</span> to just under <span class="math inline">\(\bar\eta\)</span>, and tries again.</li>
+<li><strong>If <span class="math inline">\(\eta\)</span> was safe</strong>, Jaddle keeps the step and lets <span class="math inline">\(\eta\)</span> grow a little for next time:</li>
+</ul>
+<p><span class="math display">\[
+\eta_{\text{next}} = \min\Big(\; \big(1 - (n+1)^{-0.3}\big)\,\bar\eta, \;\;\; \big(1 + (n+1)^{-0.6}\big)\,\eta \;\Big)
+\]</span></p>
+<p>Don’t worry about the odd powers; <span class="math inline">\(n\)</span> just counts the steps taken so far. The first part says “stay a bit below the safe limit”. The second says “grow, but by less and less as time goes on”. At the start <span class="math inline">\(\eta\)</span> can grow by up to 66% in one go. After a thousand steps it can only grow by about 1.6%.</p>
+<p>This means Jaddle never needs to know in advance how big <span class="math inline">\(A\)</span> can make things, which is expensive to work out for a huge problem. It also fixes a bad starting guess for <span class="math inline">\(\eta\)</span> within a few steps. (When <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span> are switched on, the movement is measured with each number’s change divided by its own <span class="math inline">\(t_j\)</span> or <span class="math inline">\(s_i\)</span>, but the idea is the same.)</p>
+</section>
+<section id="k-who-should-walk-faster" class="level3">
+<h3 class="anchored" data-anchor-id="k-who-should-walk-faster"><span class="math inline">\(k\)</span>: who should walk faster?</h3>
+<p>Sometimes the shopper is nearly at the answer while the referee still has a long way to go, or the other way round. <span class="math inline">\(k\)</span> shares the step between them: a bigger <span class="math inline">\(k\)</span> makes the referee’s steps longer (<span class="math inline">\(\eta k\)</span>) and the shopper’s shorter (<span class="math inline">\(\eta / k\)</span>). It doesn’t make the steps riskier overall, because the two step sizes multiplied together are always <span class="math inline">\(\eta^2\)</span>, whatever <span class="math inline">\(k\)</span> is.</p>
+<p>Jaddle updates <span class="math inline">\(k\)</span> at every restart (section 5). It looks at how far each player travelled during the last stretch:</p>
+<p><span class="math display">\[
+k_{\text{target}} = \frac{\lVert \Delta y \rVert}{\lVert \Delta x \rVert}
+\]</span></p>
+<p>If the referee travelled further, the referee probably still has further to go, so the referee should get the longer stride. Jaddle doesn’t jump straight to the target, because one stretch of measurements can be misleading. It meets the old value halfway, in the multiplying sense:</p>
+<p><span class="math display">\[
+k_{\text{new}} = \sqrt{k_{\text{old}} \times k_{\text{target}}}
+\]</span></p>
+<p>This is the <strong>geometric mean</strong>. For example, if <span class="math inline">\(k_{\text{old}} = 1\)</span> and <span class="math inline">\(k_{\text{target}} = 100\)</span>, then <span class="math inline">\(k_{\text{new}} = \sqrt{100} = 10\)</span>. Why not the ordinary average? Because <span class="math inline">\(k\)</span> is a ratio. <span class="math inline">\(k = 100\)</span> and <span class="math inline">\(k = 1/100\)</span> are equally lopsided, just in opposite directions, and the geometric mean treats them fairly. Jaddle also keeps <span class="math inline">\(k\)</span> between <span class="math inline">\(10^{-8}\)</span> and <span class="math inline">\(10^{8}\)</span> so it can never run away. The very first <span class="math inline">\(k\)</span> is a guess based on the sizes of <span class="math inline">\(c\)</span> and <span class="math inline">\(b\)</span>.</p>
+</section>
+<section id="t-and-s-every-number-gets-its-own-stride" class="level3">
+<h3 class="anchored" data-anchor-id="t-and-s-every-number-gets-its-own-stride"><span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span>: every number gets its own stride</h3>
+<p><span class="math inline">\(\eta\)</span> and <span class="math inline">\(k\)</span> treat big groups of numbers the same. But inside a problem with a million numbers, some are marching steadily towards their answer while others are jittering back and forth. <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span> give each number its own stride.</p>
+<p>At each restart, Jaddle looks back over the last stretch at each number <span class="math inline">\(j\)</span> and works out two things:</p>
+<ul>
+<li>its <strong>net distance</strong> <span class="math inline">\(r_j\)</span>: how far it ended up from where it started;</li>
+<li>its <strong>total wiggle</strong> <span class="math inline">\(H_j\)</span>: the size of every step it took, squared and added up.</li>
+</ul>
+<p>Then it divides one by the other:</p>
+<p><span class="math display">\[
+\rho_j = \frac{r_j}{\sqrt{H_j}}
+\]</span></p>
+<p>Here is what <span class="math inline">\(\rho\)</span> (rho) looks like for three numbers that each took 16 steps of size 1, so <span class="math inline">\(\sqrt{H} = \sqrt{16} = 4\)</span> for all of them:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Number</th>
+<th>What it did</th>
+<th>Net distance <span class="math inline">\(r\)</span></th>
+<th><span class="math inline">\(\rho = r / 4\)</span></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td>16 steps forward</td>
+<td>16</td>
+<td>4</td>
+<td>marching steadily</td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td>10 forward, 6 back</td>
+<td>4</td>
+<td>1</td>
+<td>wandering a bit</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td>forward, back, forward, back…</td>
+<td>0</td>
+<td>0</td>
+<td>jittering on the spot</td>
+</tr>
+</tbody>
+</table>
+<p>A big <span class="math inline">\(\rho\)</span> means the number knows where it is going, so it should take <strong>bigger</strong> steps. A small <span class="math inline">\(\rho\)</span> means it keeps overshooting and coming back, so it should take <strong>smaller</strong> steps. Jaddle updates each number’s stride with</p>
+<p><span class="math display">\[
+t_j \;\leftarrow\; t_j \times \left(\frac{\rho_j}{\rho_{\text{typical}}}\right)^{1/2}
+\]</span></p>
+<p>where <span class="math inline">\(\rho_{\text{typical}}\)</span> is the geometric mean of all the <span class="math inline">\(\rho\)</span>’s. If only A and B were in the problem, <span class="math inline">\(\rho_{\text{typical}} = \sqrt{4 \times 1} = 2\)</span>:</p>
+<ul>
+<li>A’s stride is multiplied by <span class="math inline">\(\sqrt{4/2} \approx 1.41\)</span>, so it gets 41% longer.</li>
+<li>B’s stride is multiplied by <span class="math inline">\(\sqrt{1/2} \approx 0.71\)</span>, so it gets 29% shorter.</li>
+</ul>
+<p>Dividing by the typical value keeps the group’s overall pace the same, so <span class="math inline">\(\eta\)</span> and <span class="math inline">\(k\)</span> stay in charge of that. Each stride is also kept within 10 times bigger or smaller than where it started, and numbers that didn’t move at all (for example ones stuck at a limit) give no information, so they keep their stride. The referee’s fines get exactly the same treatment to update <span class="math inline">\(s_i\)</span>.</p>
+<p>This idea borrows from machine learning methods called AdaGrad and DoG (“distance over gradients”). On a standard collection of hard test problems (the MIPLIB 2017 linear programs) it cut Jaddle’s solve times by about 18% on average.</p>
+</section>
+</section>
+<section id="restarts-when-in-doubt-start-fresh" class="level2">
+<h2 class="anchored" data-anchor-id="restarts-when-in-doubt-start-fresh">5. Restarts: when in doubt, start fresh</h2>
+<p>Remember the two problems with averaging? It is slow, and it never forgets the bad early guesses.</p>
+<p>The fix is the <strong>restart</strong>. Once the average has got a lot closer to the answer, Jaddle <strong>jumps</strong> both players to the average, throws away all the history, and starts a fresh average from there.</p>
+<p>Why does that help so much? The size of the circle the players run around depends on how far from the answer they start. Start closer and the next circle is smaller, so the next average is closer still, and so on. Each restart shrinks the error by a fixed fraction. “Ten times more turns for ten times more accuracy” turns into “a few more restarts for each extra digit of accuracy”.</p>
+<section id="when-to-restart" class="level3">
+<h3 class="anchored" data-anchor-id="when-to-restart">When to restart</h3>
+<p>Jaddle doesn’t know the answer (if it did, it could stop!), so it can’t measure the distance to it. Instead it uses a <strong>wrongness score</strong> made from three checks. The score is the largest of them:</p>
+<ol type="1">
+<li><strong>Broken rules.</strong> How badly does the shopper break the rules? For flour: <span class="math inline">\(\max(0,\ 3 - x)\)</span>.</li>
+<li><strong>Unfair fines.</strong> Could these fines ever be the right price list? For flour, a fine above $2 makes no sense, because buying more flour would be cheaper than paying it: <span class="math inline">\(\max(0,\ y - 2)\)</span>.</li>
+<li><strong>The gap.</strong> The shopper pays <span class="math inline">\(2x\)</span>. The fines tell you the least anyone could ever pay, here <span class="math inline">\(3y\)</span>. At the answer these two numbers match (<span class="math inline">\(2 \times 3 = 3 \times 2 = 6\)</span>), so the gap <span class="math inline">\(|2x - 3y|\)</span> should be zero.</li>
+</ol>
+<p>Each check is divided by the size of the problem’s numbers, so the score means the same thing for a tiny problem and a huge one. When all three checks are below a small tolerance (by default 0.001), Jaddle stops: it has found the answer.</p>
+<p>Write <span class="math inline">\(m\)</span> for the score now and <span class="math inline">\(m_{\text{last}}\)</span> for the score at the last restart. Jaddle restarts when one of these happens:</p>
+<ul>
+<li><strong>Good progress:</strong> <span class="math inline">\(m \le 0.2\, m_{\text{last}}\)</span>. The score has dropped to a fifth. Lock in the gain.</li>
+<li><strong>Stalling:</strong> <span class="math inline">\(m \le 0.8\, m_{\text{last}}\)</span> and the score has started going back <em>up</em>. We made some progress and it’s fading, so lock it in.</li>
+<li><strong>Taking too long:</strong> the current stretch has gone on for a long time without either of the above, so restart anyway.</li>
+</ul>
+<p>At a restart Jaddle:</p>
+<ol type="1">
+<li>jumps to whichever of the <strong>current point</strong> or the <strong>average</strong> has the better score;</li>
+<li>updates <span class="math inline">\(k\)</span>, <span class="math inline">\(t\)</span> and <span class="math inline">\(s\)</span> using what it saw during the stretch;</li>
+<li>throws away the old average and starts a new one;</li>
+<li>keeps <span class="math inline">\(\eta\)</span>, since the step it learned is still useful.</li>
+</ol>
+</section>
+<section id="see-the-difference" class="level3">
+<h3 class="anchored" data-anchor-id="see-the-difference">See the difference</h3>
+<p>Here is the flour problem again with a fixed step size, scored by the wrongness score above. The score axis is logarithmic: each step down the axis divides the score by the same amount.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb5" data-startfrom="508" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 507;"><span id="cb5-508"><a href="#cb5-508" aria-hidden="true" tabindex="-1"></a>restartData <span class="op">=</span> {</span>
+<span id="cb5-509"><a href="#cb5-509" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> merit <span class="op">=</span> (x<span class="op">,</span> y) <span class="kw">=&gt;</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(</span>
+<span id="cb5-510"><a href="#cb5-510" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> <span class="dv">3</span> <span class="op">-</span> x) <span class="op">/</span> <span class="dv">4</span><span class="op">,</span></span>
+<span id="cb5-511"><a href="#cb5-511" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> y <span class="op">-</span> <span class="dv">2</span>) <span class="op">/</span> <span class="dv">3</span><span class="op">,</span></span>
+<span id="cb5-512"><a href="#cb5-512" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="dv">2</span> <span class="op">*</span> x <span class="op">-</span> <span class="dv">3</span> <span class="op">*</span> y) <span class="op">/</span> (<span class="dv">1</span> <span class="op">+</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="dv">2</span> <span class="op">*</span> x) <span class="op">+</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">abs</span>(<span class="dv">3</span> <span class="op">*</span> y))</span>
+<span id="cb5-513"><a href="#cb5-513" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb5-514"><a href="#cb5-514" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> step <span class="op">=</span> (x<span class="op">,</span> y<span class="op">,</span> eta) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-515"><a href="#cb5-515" aria-hidden="true" tabindex="-1"></a>    x <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> x <span class="op">-</span> eta <span class="op">*</span> (<span class="dv">2</span> <span class="op">-</span> y))<span class="op">;</span></span>
+<span id="cb5-516"><a href="#cb5-516" aria-hidden="true" tabindex="-1"></a>    y <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(<span class="dv">0</span><span class="op">,</span> y <span class="op">+</span> eta <span class="op">*</span> (<span class="dv">3</span> <span class="op">-</span> x))<span class="op">;</span></span>
+<span id="cb5-517"><a href="#cb5-517" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [x<span class="op">,</span> y]<span class="op">;</span></span>
+<span id="cb5-518"><a href="#cb5-518" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb5-519"><a href="#cb5-519" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> eta <span class="op">=</span> <span class="fl">0.4</span><span class="op">,</span> N <span class="op">=</span> <span class="dv">300</span><span class="op">,</span> floor <span class="op">=</span> <span class="fl">1e-16</span><span class="op">,</span> rows <span class="op">=</span> []<span class="op">;</span></span>
+<span id="cb5-520"><a href="#cb5-520" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-521"><a href="#cb5-521" aria-hidden="true" tabindex="-1"></a>  <span class="co">// No restarts: score the current point and the average.</span></span>
+<span id="cb5-522"><a href="#cb5-522" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> x <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> y <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> sx <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> sy <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-523"><a href="#cb5-523" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">1</span><span class="op">;</span> i <span class="op">&lt;=</span> N<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb5-524"><a href="#cb5-524" aria-hidden="true" tabindex="-1"></a>    [x<span class="op">,</span> y] <span class="op">=</span> <span class="fu">step</span>(x<span class="op">,</span> y<span class="op">,</span> eta)<span class="op">;</span></span>
+<span id="cb5-525"><a href="#cb5-525" aria-hidden="true" tabindex="-1"></a>    sx <span class="op">+=</span> x<span class="op">;</span> sy <span class="op">+=</span> y<span class="op">;</span></span>
+<span id="cb5-526"><a href="#cb5-526" aria-hidden="true" tabindex="-1"></a>    rows<span class="op">.</span><span class="fu">push</span>({i<span class="op">,</span> <span class="dt">score</span><span class="op">:</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(floor<span class="op">,</span> <span class="fu">merit</span>(x<span class="op">,</span> y))<span class="op">,</span> <span class="dt">method</span><span class="op">:</span> <span class="st">"Current point only"</span>})<span class="op">;</span></span>
+<span id="cb5-527"><a href="#cb5-527" aria-hidden="true" tabindex="-1"></a>    rows<span class="op">.</span><span class="fu">push</span>({i<span class="op">,</span> <span class="dt">score</span><span class="op">:</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(floor<span class="op">,</span> <span class="fu">merit</span>(sx <span class="op">/</span> i<span class="op">,</span> sy <span class="op">/</span> i))<span class="op">,</span> <span class="dt">method</span><span class="op">:</span> <span class="st">"Average"</span>})<span class="op">;</span></span>
+<span id="cb5-528"><a href="#cb5-528" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-529"><a href="#cb5-529" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-530"><a href="#cb5-530" aria-hidden="true" tabindex="-1"></a>  <span class="co">// With restarts.</span></span>
+<span id="cb5-531"><a href="#cb5-531" aria-hidden="true" tabindex="-1"></a>  x <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> y <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> sx <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> sy <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-532"><a href="#cb5-532" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> n <span class="op">=</span> <span class="dv">0</span><span class="op">,</span> mLast <span class="op">=</span> <span class="fu">merit</span>(<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>)<span class="op">,</span> prev <span class="op">=</span> <span class="kw">Infinity</span><span class="op">;</span></span>
+<span id="cb5-533"><a href="#cb5-533" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">1</span><span class="op">;</span> i <span class="op">&lt;=</span> N<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb5-534"><a href="#cb5-534" aria-hidden="true" tabindex="-1"></a>    [x<span class="op">,</span> y] <span class="op">=</span> <span class="fu">step</span>(x<span class="op">,</span> y<span class="op">,</span> eta)<span class="op">;</span></span>
+<span id="cb5-535"><a href="#cb5-535" aria-hidden="true" tabindex="-1"></a>    n<span class="op">++;</span> sx <span class="op">+=</span> x<span class="op">;</span> sy <span class="op">+=</span> y<span class="op">;</span></span>
+<span id="cb5-536"><a href="#cb5-536" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> ax <span class="op">=</span> sx <span class="op">/</span> n<span class="op">,</span> ay <span class="op">=</span> sy <span class="op">/</span> n<span class="op">;</span></span>
+<span id="cb5-537"><a href="#cb5-537" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> ma <span class="op">=</span> <span class="fu">merit</span>(ax<span class="op">,</span> ay)<span class="op">,</span> mi <span class="op">=</span> <span class="fu">merit</span>(x<span class="op">,</span> y)<span class="op">,</span> m <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">min</span>(ma<span class="op">,</span> mi)<span class="op">;</span></span>
+<span id="cb5-538"><a href="#cb5-538" aria-hidden="true" tabindex="-1"></a>    rows<span class="op">.</span><span class="fu">push</span>({i<span class="op">,</span> <span class="dt">score</span><span class="op">:</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(floor<span class="op">,</span> m)<span class="op">,</span> <span class="dt">method</span><span class="op">:</span> <span class="st">"Average + restarts"</span>})<span class="op">;</span></span>
+<span id="cb5-539"><a href="#cb5-539" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> good <span class="op">=</span> m <span class="op">&lt;=</span> <span class="fl">0.2</span> <span class="op">*</span> mLast<span class="op">;</span></span>
+<span id="cb5-540"><a href="#cb5-540" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> stalling <span class="op">=</span> m <span class="op">&lt;=</span> <span class="fl">0.8</span> <span class="op">*</span> mLast <span class="op">&amp;&amp;</span> m <span class="op">&gt;</span> prev<span class="op">;</span></span>
+<span id="cb5-541"><a href="#cb5-541" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (n <span class="op">&gt;=</span> <span class="dv">10</span> <span class="op">&amp;&amp;</span> (good <span class="op">||</span> stalling)) {</span>
+<span id="cb5-542"><a href="#cb5-542" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (ma <span class="op">&lt;=</span> mi) { x <span class="op">=</span> ax<span class="op">;</span> y <span class="op">=</span> ay<span class="op">;</span> }</span>
+<span id="cb5-543"><a href="#cb5-543" aria-hidden="true" tabindex="-1"></a>      sx <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> sy <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> n <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> mLast <span class="op">=</span> m<span class="op">;</span> prev <span class="op">=</span> <span class="kw">Infinity</span><span class="op">;</span></span>
+<span id="cb5-544"><a href="#cb5-544" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb5-545"><a href="#cb5-545" aria-hidden="true" tabindex="-1"></a>      prev <span class="op">=</span> m<span class="op">;</span></span>
+<span id="cb5-546"><a href="#cb5-546" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-547"><a href="#cb5-547" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-548"><a href="#cb5-548" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> rows<span class="op">;</span></span>
+<span id="cb5-549"><a href="#cb5-549" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb6" data-startfrom="553" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 552;"><span id="cb6-553"><a href="#cb6-553" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb6-554"><a href="#cb6-554" aria-hidden="true" tabindex="-1"></a>  <span class="dt">width</span><span class="op">:</span> <span class="dv">620</span><span class="op">,</span></span>
+<span id="cb6-555"><a href="#cb6-555" aria-hidden="true" tabindex="-1"></a>  <span class="dt">height</span><span class="op">:</span> <span class="dv">380</span><span class="op">,</span></span>
+<span id="cb6-556"><a href="#cb6-556" aria-hidden="true" tabindex="-1"></a>  <span class="dt">grid</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb6-557"><a href="#cb6-557" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"turns →"</span>}<span class="op">,</span></span>
+<span id="cb6-558"><a href="#cb6-558" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span> {<span class="dt">type</span><span class="op">:</span> <span class="st">"log"</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ wrongness score (log scale)"</span><span class="op">,</span> <span class="dt">tickFormat</span><span class="op">:</span> <span class="st">".0e"</span>}<span class="op">,</span></span>
+<span id="cb6-559"><a href="#cb6-559" aria-hidden="true" tabindex="-1"></a>  <span class="dt">color</span><span class="op">:</span> {</span>
+<span id="cb6-560"><a href="#cb6-560" aria-hidden="true" tabindex="-1"></a>    <span class="dt">legend</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb6-561"><a href="#cb6-561" aria-hidden="true" tabindex="-1"></a>    <span class="dt">domain</span><span class="op">:</span> [<span class="st">"Current point only"</span><span class="op">,</span> <span class="st">"Average"</span><span class="op">,</span> <span class="st">"Average + restarts"</span>]<span class="op">,</span></span>
+<span id="cb6-562"><a href="#cb6-562" aria-hidden="true" tabindex="-1"></a>    <span class="dt">range</span><span class="op">:</span> [<span class="st">"#4c78a8"</span><span class="op">,</span> <span class="st">"#f58518"</span><span class="op">,</span> <span class="st">"#54a24b"</span>]</span>
+<span id="cb6-563"><a href="#cb6-563" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-564"><a href="#cb6-564" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb6-565"><a href="#cb6-565" aria-hidden="true" tabindex="-1"></a>    Plot<span class="op">.</span><span class="fu">line</span>(restartData<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"i"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"score"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"method"</span><span class="op">,</span> <span class="dt">strokeWidth</span><span class="op">:</span> <span class="dv">2</span>})</span>
+<span id="cb6-566"><a href="#cb6-566" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb6-567"><a href="#cb6-567" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-6" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+<p>The current point (blue) circles forever and never improves. The average (orange) slowly creeps in. With restarts (green) the score drops off a cliff and reaches the limit of what the computer can store (about 16 digits) in roughly 200 turns.</p>
+</section>
+</section>
+<section id="putting-it-all-together" class="level2">
+<h2 class="anchored" data-anchor-id="putting-it-all-together">Putting it all together</h2>
+<p>Here is the whole recipe in one place:</p>
+<pre class="text"><code>rescale the problem so its numbers are all about the same size
+start with x = 0 (inside its limits), y = 0, η = 1, k = a guess, all t and s = 1
+
+repeat:
+    take a trial alternating step with τ = (η / k)·t and σ = η·k·s
+    if the step was too big:  shrink η and try again
+    otherwise:                keep it, update the average, let η grow a little
+
+    every so often:
+        work out the wrongness score
+        if all three checks are tiny:  stop, we have the answer!
+        if a restart rule fires:
+            jump to the better of the current point and the average
+            update k, t and s
+            start a fresh average</code></pre>
+<p>Every part of this is either a multiplication by <span class="math inline">\(A\)</span> or <span class="math inline">\(A^\top\)</span>, or simple arithmetic on each number separately. There are no big equation-solving steps, which is why it works on problems with millions of numbers and runs so well on graphics cards. Jaddle is written in JAX, a Python library that turns the whole loop into one fast compiled program. The same code runs on a laptop CPU, a GPU or a TPU.</p>
+<p>Jaddle also has a second solver for curvier problems (convex programs), where the cost and rules can be more complicated than straight lines. It uses the same five ideas. The only difference is that it can’t write the slopes down as <span class="math inline">\(c + A^\top y\)</span>, so JAX works them out automatically.</p>
+</section>
+<section id="cheat-sheet" class="level2">
+<h2 class="anchored" data-anchor-id="cheat-sheet">Cheat sheet</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symbol</th>
+<th>Name</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(x\)</span></td>
+<td>primal variables</td>
+<td>the shopper’s choices</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(y\)</span></td>
+<td>dual variables</td>
+<td>the referee’s fines, one per rule</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(L(x, y)\)</span></td>
+<td>Lagrangian</td>
+<td>the total bill: cost plus fines</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\tau,\ \sigma\)</span></td>
+<td>step sizes</td>
+<td>how far the shopper / referee move per turn</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\bar z\)</span></td>
+<td>average</td>
+<td>the weighted average of everywhere they’ve been</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\eta\)</span></td>
+<td>base step</td>
+<td>the whole group’s pace, learned as it goes</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\bar\eta\)</span></td>
+<td>safe step</td>
+<td>the largest step that won’t make them overreact</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(k\)</span></td>
+<td>primal weight</td>
+<td>shares the pace between shopper and referee</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(t_j,\ s_i\)</span></td>
+<td>diagonal</td>
+<td>each number’s personal stride</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\rho_j\)</span></td>
+<td>drift ratio</td>
+<td>net distance ÷ total wiggle</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(m\)</span></td>
+<td>wrongness score</td>
+<td>the largest of: broken rules, unfair fines, gap</td>
+</tr>
+</tbody>
+</table>
+
+
+</section>
+
+</main> <!-- /main -->
+<script type="ojs-module-contents">
+eyJjb250ZW50cyI6W3sibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtMSIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6ImZ1bmN0aW9uIHNpbXVsYXRlKGV0YSwgbikge1xuICBsZXQgeCA9IDAsIHkgPSAwLCBzeCA9IDAsIHN5ID0gMDtcbiAgY29uc3QgcHRzID0gW107XG4gIGZvciAobGV0IGkgPSAxOyBpIDw9IG47IGkrKykge1xuICAgIHggPSBNYXRoLm1heCgwLCB4IC0gZXRhICogKDIgLSB5KSk7ICAgLy8gc2hvcHBlciB3YWxrcyBkb3duaGlsbFxuICAgIHkgPSBNYXRoLm1heCgwLCB5ICsgZXRhICogKDMgLSB4KSk7ICAgLy8gcmVmZXJlZSB3YWxrcyB1cGhpbGxcbiAgICBzeCArPSB4OyBzeSArPSB5O1xuICAgIHB0cy5wdXNoKHtpLCB4LCB5LCBheDogc3ggLyBpLCBheTogc3kgLyBpfSk7XG4gIH1cbiAgcmV0dXJuIHB0cztcbn1cbiJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtMiIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6ImZ1bmN0aW9uIHNhZGRsZVBsb3QocHRzLCBzaG93QXZnKSB7XG4gIGNvbnN0IG1hcmtzID0gW1xuICAgIFBsb3QubGluZShwdHMsIHt4OiBcInhcIiwgeTogXCJ5XCIsIHN0cm9rZTogXCIjNGM3OGE4XCIsIHN0cm9rZU9wYWNpdHk6IDAuNDV9KSxcbiAgICBQbG90LmRvdChwdHMsIHt4OiBcInhcIiwgeTogXCJ5XCIsIHI6IDIuNSwgZmlsbDogXCIjNGM3OGE4XCJ9KVxuICBdO1xuICBpZiAoc2hvd0F2Zykge1xuICAgIG1hcmtzLnB1c2goUGxvdC5saW5lKHB0cywge3g6IFwiYXhcIiwgeTogXCJheVwiLCBzdHJva2U6IFwiI2Y1ODUxOFwiLCBzdHJva2VXaWR0aDogMi41fSkpO1xuICAgIG1hcmtzLnB1c2goUGxvdC5kb3QocHRzLnNsaWNlKC0xKSwge3g6IFwiYXhcIiwgeTogXCJheVwiLCByOiA2LCBmaWxsOiBcIiNmNTg1MThcIn0pKTtcbiAgfVxuICBtYXJrcy5wdXNoKFBsb3QuZG90KFt7eDogMywgeTogMn1dLCB7eDogXCJ4XCIsIHk6IFwieVwiLCByOiA3LCBmaWxsOiBcIiNlNDU3NTZcIiwgc3Ryb2tlOiBcIndoaXRlXCJ9KSk7XG4gIG1hcmtzLnB1c2goUGxvdC50ZXh0KFt7eDogMywgeTogMn1dLCB7eDogXCJ4XCIsIHk6IFwieVwiLCB0ZXh0OiBkID0+IFwic2FkZGxlIHBvaW50ICgzLCAyKVwiLCBkeTogLTE0fSkpO1xuICByZXR1cm4gUGxvdC5wbG90KHtcbiAgICB3aWR0aDogNTIwLFxuICAgIGhlaWdodDogNDIwLFxuICAgIGdyaWQ6IHRydWUsXG4gICAgeDoge2RvbWFpbjogWzAsIDYuNV0sIGxhYmVsOiBcInggPSBraWxvcyBvZiBmbG91ciAoc2hvcHBlcikg4oaSXCJ9LFxuICAgIHk6IHtkb21haW46IFswLCA1LjVdLCBsYWJlbDogXCLihpEgeSA9IGZpbmUgcGVyIG1pc3Npbmcga2lsbyAocmVmZXJlZSlcIn0sXG4gICAgbWFya3NcbiAgfSk7XG59XG4ifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXQiLCJjZWxsTmFtZSI6Im9qcy1jZWxsLTMiLCJpbmxpbmUiOmZhbHNlLCJzb3VyY2UiOiJ2aWV3b2YgZXRhMSA9IElucHV0cy5yYW5nZShbMC4wNSwgMS4yXSwge3ZhbHVlOiAwLjMsIHN0ZXA6IDAuMDUsIGxhYmVsOiBcIlN0ZXAgc2l6ZVwifSlcbnZpZXdvZiBuMSA9IElucHV0cy5yYW5nZShbNSwgMzAwXSwge3ZhbHVlOiA2MCwgc3RlcDogNSwgbGFiZWw6IFwiTnVtYmVyIG9mIHR1cm5zXCJ9KVxuc2FkZGxlUGxvdChzaW11bGF0ZShldGExLCBuMSksIGZhbHNlKVxuIn0seyJtZXRob2ROYW1lIjoiaW50ZXJwcmV0IiwiY2VsbE5hbWUiOiJvanMtY2VsbC00IiwiaW5saW5lIjpmYWxzZSwic291cmNlIjoidmlld29mIGV0YTIgPSBJbnB1dHMucmFuZ2UoWzAuMDUsIDEuMl0sIHt2YWx1ZTogMC4zLCBzdGVwOiAwLjA1LCBsYWJlbDogXCJTdGVwIHNpemVcIn0pXG52aWV3b2YgbjIgPSBJbnB1dHMucmFuZ2UoWzUsIDMwMF0sIHt2YWx1ZTogMTUwLCBzdGVwOiA1LCBsYWJlbDogXCJOdW1iZXIgb2YgdHVybnNcIn0pXG5zYWRkbGVQbG90KHNpbXVsYXRlKGV0YTIsIG4yKSwgdHJ1ZSlcbiJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtNSIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6InJlc3RhcnREYXRhID0ge1xuICBjb25zdCBtZXJpdCA9ICh4LCB5KSA9PiBNYXRoLm1heChcbiAgICBNYXRoLm1heCgwLCAzIC0geCkgLyA0LFxuICAgIE1hdGgubWF4KDAsIHkgLSAyKSAvIDMsXG4gICAgTWF0aC5hYnMoMiAqIHggLSAzICogeSkgLyAoMSArIE1hdGguYWJzKDIgKiB4KSArIE1hdGguYWJzKDMgKiB5KSlcbiAgKTtcbiAgY29uc3Qgc3RlcCA9ICh4LCB5LCBldGEpID0+IHtcbiAgICB4ID0gTWF0aC5tYXgoMCwgeCAtIGV0YSAqICgyIC0geSkpO1xuICAgIHkgPSBNYXRoLm1heCgwLCB5ICsgZXRhICogKDMgLSB4KSk7XG4gICAgcmV0dXJuIFt4LCB5XTtcbiAgfTtcbiAgY29uc3QgZXRhID0gMC40LCBOID0gMzAwLCBmbG9vciA9IDFlLTE2LCByb3dzID0gW107XG5cbiAgLy8gTm8gcmVzdGFydHM6IHNjb3JlIHRoZSBjdXJyZW50IHBvaW50IGFuZCB0aGUgYXZlcmFnZS5cbiAgbGV0IHggPSAwLCB5ID0gMCwgc3ggPSAwLCBzeSA9IDA7XG4gIGZvciAobGV0IGkgPSAxOyBpIDw9IE47IGkrKykge1xuICAgIFt4LCB5XSA9IHN0ZXAoeCwgeSwgZXRhKTtcbiAgICBzeCArPSB4OyBzeSArPSB5O1xuICAgIHJvd3MucHVzaCh7aSwgc2NvcmU6IE1hdGgubWF4KGZsb29yLCBtZXJpdCh4LCB5KSksIG1ldGhvZDogXCJDdXJyZW50IHBvaW50IG9ubHlcIn0pO1xuICAgIHJvd3MucHVzaCh7aSwgc2NvcmU6IE1hdGgubWF4KGZsb29yLCBtZXJpdChzeCAvIGksIHN5IC8gaSkpLCBtZXRob2Q6IFwiQXZlcmFnZVwifSk7XG4gIH1cblxuICAvLyBXaXRoIHJlc3RhcnRzLlxuICB4ID0gMDsgeSA9IDA7IHN4ID0gMDsgc3kgPSAwO1xuICBsZXQgbiA9IDAsIG1MYXN0ID0gbWVyaXQoMCwgMCksIHByZXYgPSBJbmZpbml0eTtcbiAgZm9yIChsZXQgaSA9IDE7IGkgPD0gTjsgaSsrKSB7XG4gICAgW3gsIHldID0gc3RlcCh4LCB5LCBldGEpO1xuICAgIG4rKzsgc3ggKz0geDsgc3kgKz0geTtcbiAgICBjb25zdCBheCA9IHN4IC8gbiwgYXkgPSBzeSAvIG47XG4gICAgY29uc3QgbWEgPSBtZXJpdChheCwgYXkpLCBtaSA9IG1lcml0KHgsIHkpLCBtID0gTWF0aC5taW4obWEsIG1pKTtcbiAgICByb3dzLnB1c2goe2ksIHNjb3JlOiBNYXRoLm1heChmbG9vciwgbSksIG1ldGhvZDogXCJBdmVyYWdlICsgcmVzdGFydHNcIn0pO1xuICAgIGNvbnN0IGdvb2QgPSBtIDw9IDAuMiAqIG1MYXN0O1xuICAgIGNvbnN0IHN0YWxsaW5nID0gbSA8PSAwLjggKiBtTGFzdCAmJiBtID4gcHJldjtcbiAgICBpZiAobiA+PSAxMCAmJiAoZ29vZCB8fCBzdGFsbGluZykpIHtcbiAgICAgIGlmIChtYSA8PSBtaSkgeyB4ID0gYXg7IHkgPSBheTsgfVxuICAgICAgc3ggPSAwOyBzeSA9IDA7IG4gPSAwOyBtTGFzdCA9IG07IHByZXYgPSBJbmZpbml0eTtcbiAgICB9IGVsc2Uge1xuICAgICAgcHJldiA9IG07XG4gICAgfVxuICB9XG4gIHJldHVybiByb3dzO1xufVxuIn0seyJtZXRob2ROYW1lIjoiaW50ZXJwcmV0IiwiY2VsbE5hbWUiOiJvanMtY2VsbC02IiwiaW5saW5lIjpmYWxzZSwic291cmNlIjoiUGxvdC5wbG90KHtcbiAgd2lkdGg6IDYyMCxcbiAgaGVpZ2h0OiAzODAsXG4gIGdyaWQ6IHRydWUsXG4gIHg6IHtsYWJlbDogXCJ0dXJucyDihpJcIn0sXG4gIHk6IHt0eXBlOiBcImxvZ1wiLCBsYWJlbDogXCLihpEgd3JvbmduZXNzIHNjb3JlIChsb2cgc2NhbGUpXCIsIHRpY2tGb3JtYXQ6IFwiLjBlXCJ9LFxuICBjb2xvcjoge1xuICAgIGxlZ2VuZDogdHJ1ZSxcbiAgICBkb21haW46IFtcIkN1cnJlbnQgcG9pbnQgb25seVwiLCBcIkF2ZXJhZ2VcIiwgXCJBdmVyYWdlICsgcmVzdGFydHNcIl0sXG4gICAgcmFuZ2U6IFtcIiM0Yzc4YThcIiwgXCIjZjU4NTE4XCIsIFwiIzU0YTI0YlwiXVxuICB9LFxuICBtYXJrczogW1xuICAgIFBsb3QubGluZShyZXN0YXJ0RGF0YSwge3g6IFwiaVwiLCB5OiBcInNjb3JlXCIsIHN0cm9rZTogXCJtZXRob2RcIiwgc3Ryb2tlV2lkdGg6IDJ9KVxuICBdXG59KVxuIn0seyJtZXRob2ROYW1lIjoiaW50ZXJwcmV0UXVpZXQiLCJzb3VyY2UiOiJzaGlueUlucHV0KCdldGExJykifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXRRdWlldCIsInNvdXJjZSI6InNoaW55SW5wdXQoJ24xJykifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXRRdWlldCIsInNvdXJjZSI6InNoaW55SW5wdXQoJ2V0YTInKSJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldFF1aWV0Iiwic291cmNlIjoic2hpbnlJbnB1dCgnbjInKSJ9XX0=
+</script>
+<script type="module">
+if (window.location.protocol === "file:") { alert("The OJS runtime does not work with file:// URLs. Please use a web server to view this document."); }
+window._ojs.paths.runtimeToDoc = "../../posts/how-jaddle-works";
+window._ojs.paths.runtimeToRoot = "../..";
+window._ojs.paths.docToRoot = "../..";
+window._ojs.selfContained = false;
+window._ojs.runtime.interpretFromScriptTags();
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/brendanvr\.github\.io\/jaddle-blog");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>Jaddle: Saddle up with JAX</p>
+</div>   
+    <div class="nav-footer-center">
+<p>© Brendan van Rooyen</p>
+</div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/BrendanVR/Jaddle">
+      <i class="bi bi-github" role="img">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3">
+      <i class="bi bi-linkedin" role="img">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+<script src="../../site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

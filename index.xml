@@ -10,7 +10,2002 @@
 <atom:link href="https://brendanvr.github.io/jaddle-blog/index.xml" rel="self" type="application/rss+xml"/>
 <description>A blog built with Quarto</description>
 <generator>quarto-1.10.19</generator>
-<lastBuildDate>Tue, 20 Oct 2026 16:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 21 Oct 2026 16:00:00 GMT</lastBuildDate>
+<item>
+  <title>How Jaddle Works</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how_jaddle_works.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Warning: nerd content ahead!
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This article is a bit nerdy. There are equations, Greek letters and at least one joke about horse saddles. You don’t need to understand every symbol: the words around each equation say what it means in plain language. If an equation looks scary, read the sentence after it and keep going.</p>
+<p>You have been warned. Be prepared!</p>
+</div>
+</div>
+<section id="what-problem-are-we-solving" class="level2">
+<h2 class="anchored" data-anchor-id="what-problem-are-we-solving">What problem are we solving?</h2>
+<p>Jaddle is a program that solves <strong>optimisation problems</strong>. That means: pick some numbers so that something is as small (or as big) as possible, while following a set of rules.</p>
+<p>Here is a tiny one. You are baking. Flour costs $2 a kilo, and your recipe needs <strong>at least 3 kilos</strong>. How much flour should you buy to spend as little as possible?</p>
+<p>You already know the answer: buy exactly 3 kilos and spend $6. Easy.</p>
+<p>Now imagine an airline planning thousands of flights, a power company deciding which power stations to switch on, or a delivery company routing hundreds of trucks. These problems have millions of numbers to choose and millions of rules to follow. Nobody can eyeball those. We need a recipe that a computer can follow, step by step, and that recipe is what this article is about.</p>
+<p>Mathematicians write this kind of problem (a <strong>linear program</strong>) like this:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Ctext%7Bminimise%20%7D%20c%5E%5Ctop%20x%20%5Cquad%20%5Ctext%7Bsuch%20that%7D%20%5Cquad%20Ax%20%5Cle%20b,%20%5Cquad%20%5Cell%20%5Cle%20x%20%5Cle%20u%0A"></p>
+<p>In words:</p>
+<ul>
+<li><img src="https://latex.codecogs.com/png.latex?x"> is the list of numbers we get to choose (how much of each thing to buy).</li>
+<li><img src="https://latex.codecogs.com/png.latex?c"> is the list of prices, and <img src="https://latex.codecogs.com/png.latex?c%5E%5Ctop%20x%20=%20c_1%20x_1%20+%20c_2%20x_2%20+%20%5Cdots"> is the total cost.</li>
+<li>Each row of <img src="https://latex.codecogs.com/png.latex?Ax%20%5Cle%20b"> is one rule (“you need at least this much of that”).</li>
+<li><img src="https://latex.codecogs.com/png.latex?%5Cell%20%5Cle%20x%20%5Cle%20u"> are simple limits on each number, like “you can’t buy a negative amount of flour”.</li>
+</ul>
+<p>For the flour problem there is just one number, <img src="https://latex.codecogs.com/png.latex?x"> = kilos of flour. The cost is <img src="https://latex.codecogs.com/png.latex?2x">, the rule is <img src="https://latex.codecogs.com/png.latex?x%20%5Cge%203"> (which we can write as <img src="https://latex.codecogs.com/png.latex?3%20-%20x%20%5Cle%200">) and the limit is <img src="https://latex.codecogs.com/png.latex?x%20%5Cge%200">.</p>
+<p>Jaddle solves these problems in five big ideas. Let’s go through them one at a time.</p>
+</section>
+<section id="turn-rules-into-fines-dualising-and-the-lagrangian" class="level2">
+<h2 class="anchored" data-anchor-id="turn-rules-into-fines-dualising-and-the-lagrangian">1. Turn rules into fines (dualising and the Lagrangian)</h2>
+<p>Rules are awkward for computers. They act like invisible walls, and walls are hard to deal with when there are millions of them.</p>
+<p>So we play a trick: <strong>we replace every rule with a fine.</strong></p>
+<p>Imagine a <strong>referee</strong> who watches the shopper. For each rule, the referee chooses a fine, <img src="https://latex.codecogs.com/png.latex?y">, to charge for every kilo you are short. If you buy <img src="https://latex.codecogs.com/png.latex?x"> kilos you are <img src="https://latex.codecogs.com/png.latex?3%20-%20x"> kilos short, so the fine is <img src="https://latex.codecogs.com/png.latex?y%20%5Ctimes%20(3%20-%20x)">. Your total bill becomes</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0AL(x,%20y)%20=%20%5Cunderbrace%7B2x%7D_%7B%5Ctext%7Bcost%20of%20flour%7D%7D%20+%20%5Cunderbrace%7By%5C,(3%20-%20x)%7D_%7B%5Ctext%7Bfine%20for%20being%20short%7D%7D%0A"></p>
+<p>This bill has a famous name: the <strong>Lagrangian</strong>, after Joseph-Louis Lagrange, a mathematician from the 1700s. For any linear program it looks like this:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0AL(x,%20y)%20=%20c%5E%5Ctop%20x%20+%20y%5E%5Ctop%20(A%20x%20-%20b),%20%5Cqquad%20y%20%5Cge%200%0A"></p>
+<p>There is one fine for each rule, and the list of fines <img src="https://latex.codecogs.com/png.latex?y"> is called the <strong>dual variables</strong>. (The shopper’s numbers <img src="https://latex.codecogs.com/png.latex?x"> are the <strong>primal variables</strong>.) Swapping rules for fines like this is called <strong>dualising the constraints</strong>. Fines can’t be negative, because a referee doesn’t pay you for breaking a rule. If you have <em>extra</em> flour, <img src="https://latex.codecogs.com/png.latex?3%20-%20x"> is negative, and the referee’s best move is to set the fine to zero. (Rules of the form “exactly equal to” also work. Their fines are allowed to be negative.)</p>
+<section id="a-game-with-two-players" class="level3">
+<h3 class="anchored" data-anchor-id="a-game-with-two-players">A game with two players</h3>
+<p>Now we have a game:</p>
+<ul>
+<li>The <strong>shopper</strong> chooses <img src="https://latex.codecogs.com/png.latex?x"> and wants the bill <img src="https://latex.codecogs.com/png.latex?L"> to be <strong>as small as possible</strong>.</li>
+<li>The <strong>referee</strong> chooses <img src="https://latex.codecogs.com/png.latex?y"> and wants the bill <img src="https://latex.codecogs.com/png.latex?L"> to be <strong>as big as possible</strong>.</li>
+</ul>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Cmin_%7Bx%7D%20%5C;%20%5Cmax_%7By%20%5Cge%200%7D%20%5C;%20L(x,%20y)%0A"></p>
+<p>Why does this game give the same answer as the original problem? If the shopper breaks the rule, the referee can make the fine enormous, so breaking the rule is a terrible idea. If the shopper follows the rule, the fine does nothing. The shopper’s best move is to follow the rules and spend as little as possible, which is exactly the original problem. The difference is that there are no walls any more, just a bill to push down and fines to push up.</p>
+</section>
+<section id="the-saddle-point" class="level3">
+<h3 class="anchored" data-anchor-id="the-saddle-point">The saddle point</h3>
+<p>For the flour problem the game ends at <img src="https://latex.codecogs.com/png.latex?x%20=%203"> and <img src="https://latex.codecogs.com/png.latex?y%20=%202">. Check it:</p>
+<ul>
+<li>If the referee sets <img src="https://latex.codecogs.com/png.latex?y%20=%202">, the bill is <img src="https://latex.codecogs.com/png.latex?2x%20+%202(3%20-%20x)%20=%206"> whatever <img src="https://latex.codecogs.com/png.latex?x"> is. The shopper can’t do any better by changing <img src="https://latex.codecogs.com/png.latex?x">.</li>
+<li>If the shopper buys <img src="https://latex.codecogs.com/png.latex?x%20=%203">, the bill is <img src="https://latex.codecogs.com/png.latex?6%20+%20y%20%5Ctimes%200%20=%206"> whatever <img src="https://latex.codecogs.com/png.latex?y"> is. The referee can’t do any better by changing <img src="https://latex.codecogs.com/png.latex?y">.</li>
+</ul>
+<p>Neither player wants to move. This spot is called a <strong>saddle point</strong>, because the bill looks like a horse saddle. Along the horse’s back the saddle curves <em>up</em> on both sides, so the middle is the lowest point (what the shopper wants). Across the horse it curves <em>down</em> on both sides, so the middle is the highest point (what the referee wants). The middle of a saddle is the lowest point one way and the highest point the other way.</p>
+<p>That is where the name comes from: <strong>Jaddle</strong> = <strong>J</strong>AX + s<strong>addle</strong>.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Bonus: fines are prices
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The answer <img src="https://latex.codecogs.com/png.latex?y%20=%202"> means something. If your recipe needed one <em>more</em> kilo, your cost would go up by exactly $2. The referee’s fine tells you how much each rule costs you. On big problems this is very useful: it tells a company which of its rules are the expensive ones.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent" class="level2">
+<h2 class="anchored" data-anchor-id="take-turns-walking-downhill-and-uphill-alternating-gradient-descentascent">2. Take turns walking downhill and uphill (alternating gradient descent–ascent)</h2>
+<p>How do the shopper and the referee find the saddle point? They feel which way the ground slopes and take small steps.</p>
+<p>The <strong>gradient</strong> is the slope: it says which direction is uphill and how steep it is. For the flour bill the slopes are</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Cfrac%7B%5Cpartial%20L%7D%7B%5Cpartial%20x%7D%20=%202%20-%20y,%20%5Cqquad%20%5Cfrac%7B%5Cpartial%20L%7D%7B%5Cpartial%20y%7D%20=%203%20-%20x%0A"></p>
+<p>These say something sensible:</p>
+<ul>
+<li>If the fine <img src="https://latex.codecogs.com/png.latex?y"> is less than $2, flour costs more than the fine it saves you, so the shopper wants to buy <strong>less</strong>.</li>
+<li>If <img src="https://latex.codecogs.com/png.latex?x"> is less than 3, the shopper is short of flour, so the referee wants to make the fine <strong>bigger</strong>.</li>
+</ul>
+<p>For any linear program the slopes are <img src="https://latex.codecogs.com/png.latex?c%20+%20A%5E%5Ctop%20y"> for the shopper and <img src="https://latex.codecogs.com/png.latex?Ax%20-%20b"> for the referee.</p>
+<p>The shopper walks <strong>downhill</strong> (makes the bill smaller) and the referee walks <strong>uphill</strong> (makes the bill bigger). They take turns, and the referee always reacts to the shopper’s <em>newest</em> choice. That is why it is called <strong>alternating</strong>:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0Ax_%7B%5Ctext%7Bnew%7D%7D%20=%20%5Ctext%7Bclip%7D%5CBig(x%20-%20%5Ctau%5C,%5Cbig(c%20+%20A%5E%5Ctop%20y%5Cbig)%5CBig)%0A"></p>
+<p><img src="https://latex.codecogs.com/png.latex?%0Ay_%7B%5Ctext%7Bnew%7D%7D%20=%20%5Cmax%5CBig(0,%5C;%20y%20+%20%5Csigma%5C,%5Cbig(A%20x_%7B%5Ctext%7Bnew%7D%7D%20-%20b%5Cbig)%5CBig)%0A"></p>
+<p>Here <img src="https://latex.codecogs.com/png.latex?%5Ctau"> (tau) and <img src="https://latex.codecogs.com/png.latex?%5Csigma"> (sigma) are <strong>step sizes</strong>: how far each player moves per turn. “clip” pushes <img src="https://latex.codecogs.com/png.latex?x"> back inside its limits, and <img src="https://latex.codecogs.com/png.latex?%5Cmax(0,%20%5Ccdot)"> stops fines going negative.</p>
+<p>Each turn only needs two multiplications by the big table of rules: one by <img src="https://latex.codecogs.com/png.latex?A"> and one by its flipped version <img src="https://latex.codecogs.com/png.latex?A%5E%5Ctop">. That is cheap even when <img src="https://latex.codecogs.com/png.latex?A"> has millions of rows, and graphics cards (GPUs) are very good at it. Methods that only use slopes like this are called <strong>first-order methods</strong>.</p>
+<section id="try-it" class="level3">
+<h3 class="anchored" data-anchor-id="try-it">Try it</h3>
+<p>Drag the sliders and watch the shopper and referee move. Each blue dot is one turn. Both start at zero.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb1" data-startfrom="197" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 196;"><span id="cb1-197"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">simulate</span>(eta<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> n) {</span>
+<span id="cb1-198">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb1-199">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> pts <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> []<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb1-200">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> n<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">++</span>) {</span>
+<span id="cb1-201">    x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> eta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span>   <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// shopper walks downhill</span></span>
+<span id="cb1-202">    y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> eta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> x))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span>   <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// referee walks uphill</span></span>
+<span id="cb1-203">    sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb1-204">    pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>({i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">ax</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">ay</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> i})<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb1-205">  }</span>
+<span id="cb1-206">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb1-207">}</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb2" data-startfrom="211" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 210;"><span id="cb2-211"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">saddlePlot</span>(pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> showAvg) {</span>
+<span id="cb2-212">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> marks <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> [</span>
+<span id="cb2-213">    Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">line</span>(pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">stroke</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#4c78a8"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">strokeOpacity</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.45</span>})<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-214">    Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dot</span>(pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">r</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">fill</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#4c78a8"</span>})</span>
+<span id="cb2-215">  ]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-216">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (showAvg) {</span>
+<span id="cb2-217">    marks<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>(Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">line</span>(pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ax"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ay"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">stroke</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#f58518"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">strokeWidth</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2.5</span>}))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-218">    marks<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>(Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dot</span>(pts<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">slice</span>(<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ax"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"ay"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">r</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">6</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">fill</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#f58518"</span>}))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-219">  }</span>
+<span id="cb2-220">  marks<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>(Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dot</span>([{<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>}]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">r</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">7</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">fill</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#e45756"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">stroke</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"white"</span>}))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-221">  marks<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>(Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">text</span>([{<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>}]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"y"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">text</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> d <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">=&gt;</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"saddle point (3, 2)"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">dy</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">14</span>}))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-222">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>({</span>
+<span id="cb2-223">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">width</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">520</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-224">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">height</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">420</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-225">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">grid</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-226">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">domain</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> [<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">6.5</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"x = kilos of flour (shopper) →"</span>}<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-227">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">domain</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> [<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5.5</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"↑ y = fine per missing kilo (referee)"</span>}<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb2-228">    marks</span>
+<span id="cb2-229">  })<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb2-230">}</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb3" data-startfrom="235" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 234;"><span id="cb3-235">viewof eta1 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">range</span>([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.2</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">value</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">step</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Step size"</span>})</span>
+<span id="cb3-236">viewof n1 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">range</span>([<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">300</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">value</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">60</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">step</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of turns"</span>})</span>
+<span id="cb3-237"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">saddlePlot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">simulate</span>(eta1<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> n1)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">false</span>)</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-3" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+<p>Did you spot the problem? <strong>They go round in circles!</strong> The shopper reacts to the referee, the referee reacts to the shopper, and they chase each other around the saddle point like two kids running around a table. Neither ever catches the other. Smaller steps make smoother circles, but they are still circles.</p>
+<p>The good news is in the picture too: the circles go <em>around</em> the answer.</p>
+</section>
+</section>
+<section id="the-average-is-smarter-than-the-walker-averaging" class="level2">
+<h2 class="anchored" data-anchor-id="the-average-is-smarter-than-the-walker-averaging">3. The average is smarter than the walker (averaging)</h2>
+<p>What is in the middle of a circle? The centre! And if you take lots of points spread evenly around a circle and average them, you land near the centre.</p>
+<p>So Jaddle keeps a running <strong>average</strong> of everywhere the players have been. Write <img src="https://latex.codecogs.com/png.latex?z%20=%20(x,%20y)"> for both players’ positions together. After <img src="https://latex.codecogs.com/png.latex?N"> turns the average is</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Cbar%20z_N%20=%20%5Cfrac%7B%5Ceta_1%20z_1%20+%20%5Ceta_2%20z_2%20+%20%5Cdots%20+%20%5Ceta_N%20z_N%7D%7B%5Ceta_1%20+%20%5Ceta_2%20+%20%5Cdots%20+%20%5Ceta_N%7D%0A"></p>
+<p>Each position is weighted by the step size <img src="https://latex.codecogs.com/png.latex?%5Ceta_n"> used to reach it (more on <img src="https://latex.codecogs.com/png.latex?%5Ceta"> in the next section), so bigger steps count for more. Jaddle doesn’t store every old position. It nudges the average a little towards each new point, which costs almost nothing.</p>
+<p>Think of a dog on a lead running in circles around a post. Take a photo every second and average the dog’s position over all the photos: you get the post.</p>
+<p>The orange line below is the average. Turn up the number of turns and watch it home in on the answer.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb4" data-startfrom="273" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 272;"><span id="cb4-273">viewof eta2 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">range</span>([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.2</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">value</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">step</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.05</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Step size"</span>})</span>
+<span id="cb4-274">viewof n2 <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">range</span>([<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">300</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">value</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">150</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">step</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Number of turns"</span>})</span>
+<span id="cb4-275"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">saddlePlot</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">simulate</span>(eta2<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> n2)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">true</span>)</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-3" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+<p>There is a catch. The average gets there <strong>slowly</strong>: to be 10 times more accurate you need about 10 times more turns. It also never forgets. The very first guesses, which were far from the answer, keep dragging the average away forever. We fix both problems in section 5.</p>
+</section>
+<section id="choosing-step-sizes-eta-k-t-and-s" class="level2">
+<h2 class="anchored" data-anchor-id="choosing-step-sizes-eta-k-t-and-s">4. Choosing step sizes: <img src="https://latex.codecogs.com/png.latex?%5Ceta">, <img src="https://latex.codecogs.com/png.latex?k">, <img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s"></h2>
+<p>Steps that are too big overshoot and fly off. Steps that are too small take forever. Worse, different numbers in the same problem can need very different step sizes. One might be measured in millimetres and another in kilometres.</p>
+<p>Jaddle builds every step size out of four pieces:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Ctau_j%20=%20%5Cfrac%7B%5Ceta%7D%7Bk%7D%5C,%20t_j%20%5Cqquad%5Cqquad%20%5Csigma_i%20=%20%5Ceta%5C,%20k%5C,%20s_i%0A"></p>
+<p><img src="https://latex.codecogs.com/png.latex?%5Ctau_j"> is the step for the shopper’s <img src="https://latex.codecogs.com/png.latex?j">-th number, and <img src="https://latex.codecogs.com/png.latex?%5Csigma_i"> is the step for the referee’s <img src="https://latex.codecogs.com/png.latex?i">-th fine. Think of a group out on a hike:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Piece</th>
+<th>Who it affects</th>
+<th>Hiking version</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?%5Ceta"> (eta)</td>
+<td>everyone</td>
+<td>how fast the whole group walks</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?k"></td>
+<td>shopper vs.&nbsp;referee</td>
+<td>whether the shopper team or the referee team walks faster</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?t_j"></td>
+<td>the shopper’s <img src="https://latex.codecogs.com/png.latex?j">-th number</td>
+<td>how long one shopper’s stride is</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?s_i"></td>
+<td>the referee’s <img src="https://latex.codecogs.com/png.latex?i">-th fine</td>
+<td>how long one referee’s stride is</td>
+</tr>
+</tbody>
+</table>
+<p>Before any of this starts, Jaddle <strong>rescales</strong> the problem so that the numbers in <img src="https://latex.codecogs.com/png.latex?A">, <img src="https://latex.codecogs.com/png.latex?b"> and <img src="https://latex.codecogs.com/png.latex?c"> are all roughly the same size. It is a bit like converting every measurement to the same units. (The methods are called Ruiz and Pock–Chambolle scaling, if you want to look them up.) On top of that, <img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s"> start at 1 and are then <strong>adapted</strong> as the solver learns more about the problem. Giving each number its own multiplier like this is called <strong>diagonal preconditioning</strong>: “diagonal” because if you wrote the multipliers into a table, they would only appear along its diagonal.</p>
+<section id="eta-a-step-that-checks-itself" class="level3">
+<h3 class="anchored" data-anchor-id="eta-a-step-that-checks-itself"><img src="https://latex.codecogs.com/png.latex?%5Ceta">: a step that checks itself</h3>
+<p>Nobody tells Jaddle the right step size. It works it out as it goes, like this.</p>
+<p><strong>Take a trial step.</strong> Then measure two things:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Ctext%7Bmovement%7D%20=%20k%5C,%5ClVert%20%5CDelta%20x%5CrVert%5E2%20+%20%5Cfrac%7B1%7D%7Bk%7D%5C,%5ClVert%20%5CDelta%20y%20%5CrVert%5E2%0A%5Cqquad%5Cqquad%0A%5Ctext%7Binteraction%7D%20=%20%5Cbig%7C%5C,%5CDelta%20y%5E%5Ctop%20A%5C,%20%5CDelta%20x%5C,%5Cbig%7C%0A"></p>
+<p><img src="https://latex.codecogs.com/png.latex?%5CDelta%20x"> and <img src="https://latex.codecogs.com/png.latex?%5CDelta%20y"> are how much each player changed, and <img src="https://latex.codecogs.com/png.latex?%5ClVert%20%5CDelta%20x%20%5CrVert%5E2"> means “square each change and add them up”. The <strong>movement</strong> is how far the players went. The <strong>interaction</strong> is how hard their two moves pushed against each other through the rules in <img src="https://latex.codecogs.com/png.latex?A">.</p>
+<p>The interaction is what causes trouble. When the shopper’s move and the referee’s move push on each other too hard, they overreact and fly off. When the moves are big compared with how much they disturb each other, the step is safe. The largest safe step is</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Cbar%5Ceta%20=%20%5Cfrac%7B%5Ctext%7Bmovement%7D%7D%7B2%20%5Ctimes%20%5Ctext%7Binteraction%7D%7D%0A"></p>
+<ul>
+<li><strong>If <img src="https://latex.codecogs.com/png.latex?%5Ceta"> was bigger than <img src="https://latex.codecogs.com/png.latex?%5Cbar%5Ceta"></strong>, the step was too greedy. Jaddle throws it away, shrinks <img src="https://latex.codecogs.com/png.latex?%5Ceta"> to just under <img src="https://latex.codecogs.com/png.latex?%5Cbar%5Ceta">, and tries again.</li>
+<li><strong>If <img src="https://latex.codecogs.com/png.latex?%5Ceta"> was safe</strong>, Jaddle keeps the step and lets <img src="https://latex.codecogs.com/png.latex?%5Ceta"> grow a little for next time:</li>
+</ul>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Ceta_%7B%5Ctext%7Bnext%7D%7D%20=%20%5Cmin%5CBig(%5C;%20%5Cbig(1%20-%20(n+1)%5E%7B-0.3%7D%5Cbig)%5C,%5Cbar%5Ceta,%20%5C;%5C;%5C;%20%5Cbig(1%20+%20(n+1)%5E%7B-0.6%7D%5Cbig)%5C,%5Ceta%20%5C;%5CBig)%0A"></p>
+<p>Don’t worry about the odd powers; <img src="https://latex.codecogs.com/png.latex?n"> just counts the steps taken so far. The first part says “stay a bit below the safe limit”. The second says “grow, but by less and less as time goes on”. At the start <img src="https://latex.codecogs.com/png.latex?%5Ceta"> can grow by up to 66% in one go. After a thousand steps it can only grow by about 1.6%.</p>
+<p>This means Jaddle never needs to know in advance how big <img src="https://latex.codecogs.com/png.latex?A"> can make things, which is expensive to work out for a huge problem. It also fixes a bad starting guess for <img src="https://latex.codecogs.com/png.latex?%5Ceta"> within a few steps. (When <img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s"> are switched on, the movement is measured with each number’s change divided by its own <img src="https://latex.codecogs.com/png.latex?t_j"> or <img src="https://latex.codecogs.com/png.latex?s_i">, but the idea is the same.)</p>
+</section>
+<section id="k-who-should-walk-faster" class="level3">
+<h3 class="anchored" data-anchor-id="k-who-should-walk-faster"><img src="https://latex.codecogs.com/png.latex?k">: who should walk faster?</h3>
+<p>Sometimes the shopper is nearly at the answer while the referee still has a long way to go, or the other way round. <img src="https://latex.codecogs.com/png.latex?k"> shares the step between them: a bigger <img src="https://latex.codecogs.com/png.latex?k"> makes the referee’s steps longer (<img src="https://latex.codecogs.com/png.latex?%5Ceta%20k">) and the shopper’s shorter (<img src="https://latex.codecogs.com/png.latex?%5Ceta%20/%20k">). It doesn’t make the steps riskier overall, because the two step sizes multiplied together are always <img src="https://latex.codecogs.com/png.latex?%5Ceta%5E2">, whatever <img src="https://latex.codecogs.com/png.latex?k"> is.</p>
+<p>Jaddle updates <img src="https://latex.codecogs.com/png.latex?k"> at every restart (section 5). It looks at how far each player travelled during the last stretch:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0Ak_%7B%5Ctext%7Btarget%7D%7D%20=%20%5Cfrac%7B%5ClVert%20%5CDelta%20y%20%5CrVert%7D%7B%5ClVert%20%5CDelta%20x%20%5CrVert%7D%0A"></p>
+<p>If the referee travelled further, the referee probably still has further to go, so the referee should get the longer stride. Jaddle doesn’t jump straight to the target, because one stretch of measurements can be misleading. It meets the old value halfway, in the multiplying sense:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0Ak_%7B%5Ctext%7Bnew%7D%7D%20=%20%5Csqrt%7Bk_%7B%5Ctext%7Bold%7D%7D%20%5Ctimes%20k_%7B%5Ctext%7Btarget%7D%7D%7D%0A"></p>
+<p>This is the <strong>geometric mean</strong>. For example, if <img src="https://latex.codecogs.com/png.latex?k_%7B%5Ctext%7Bold%7D%7D%20=%201"> and <img src="https://latex.codecogs.com/png.latex?k_%7B%5Ctext%7Btarget%7D%7D%20=%20100">, then <img src="https://latex.codecogs.com/png.latex?k_%7B%5Ctext%7Bnew%7D%7D%20=%20%5Csqrt%7B100%7D%20=%2010">. Why not the ordinary average? Because <img src="https://latex.codecogs.com/png.latex?k"> is a ratio. <img src="https://latex.codecogs.com/png.latex?k%20=%20100"> and <img src="https://latex.codecogs.com/png.latex?k%20=%201/100"> are equally lopsided, just in opposite directions, and the geometric mean treats them fairly. Jaddle also keeps <img src="https://latex.codecogs.com/png.latex?k"> between <img src="https://latex.codecogs.com/png.latex?10%5E%7B-8%7D"> and <img src="https://latex.codecogs.com/png.latex?10%5E%7B8%7D"> so it can never run away. The very first <img src="https://latex.codecogs.com/png.latex?k"> is a guess based on the sizes of <img src="https://latex.codecogs.com/png.latex?c"> and <img src="https://latex.codecogs.com/png.latex?b">.</p>
+</section>
+<section id="t-and-s-every-number-gets-its-own-stride" class="level3">
+<h3 class="anchored" data-anchor-id="t-and-s-every-number-gets-its-own-stride"><img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s">: every number gets its own stride</h3>
+<p><img src="https://latex.codecogs.com/png.latex?%5Ceta"> and <img src="https://latex.codecogs.com/png.latex?k"> treat big groups of numbers the same. But inside a problem with a million numbers, some are marching steadily towards their answer while others are jittering back and forth. <img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s"> give each number its own stride.</p>
+<p>At each restart, Jaddle looks back over the last stretch at each number <img src="https://latex.codecogs.com/png.latex?j"> and works out two things:</p>
+<ul>
+<li>its <strong>net distance</strong> <img src="https://latex.codecogs.com/png.latex?r_j">: how far it ended up from where it started;</li>
+<li>its <strong>total wiggle</strong> <img src="https://latex.codecogs.com/png.latex?H_j">: the size of every step it took, squared and added up.</li>
+</ul>
+<p>Then it divides one by the other:</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0A%5Crho_j%20=%20%5Cfrac%7Br_j%7D%7B%5Csqrt%7BH_j%7D%7D%0A"></p>
+<p>Here is what <img src="https://latex.codecogs.com/png.latex?%5Crho"> (rho) looks like for three numbers that each took 16 steps of size 1, so <img src="https://latex.codecogs.com/png.latex?%5Csqrt%7BH%7D%20=%20%5Csqrt%7B16%7D%20=%204"> for all of them:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Number</th>
+<th>What it did</th>
+<th>Net distance <img src="https://latex.codecogs.com/png.latex?r"></th>
+<th><img src="https://latex.codecogs.com/png.latex?%5Crho%20=%20r%20/%204"></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td>16 steps forward</td>
+<td>16</td>
+<td>4</td>
+<td>marching steadily</td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td>10 forward, 6 back</td>
+<td>4</td>
+<td>1</td>
+<td>wandering a bit</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td>forward, back, forward, back…</td>
+<td>0</td>
+<td>0</td>
+<td>jittering on the spot</td>
+</tr>
+</tbody>
+</table>
+<p>A big <img src="https://latex.codecogs.com/png.latex?%5Crho"> means the number knows where it is going, so it should take <strong>bigger</strong> steps. A small <img src="https://latex.codecogs.com/png.latex?%5Crho"> means it keeps overshooting and coming back, so it should take <strong>smaller</strong> steps. Jaddle updates each number’s stride with</p>
+<p><img src="https://latex.codecogs.com/png.latex?%0At_j%20%5C;%5Cleftarrow%5C;%20t_j%20%5Ctimes%20%5Cleft(%5Cfrac%7B%5Crho_j%7D%7B%5Crho_%7B%5Ctext%7Btypical%7D%7D%7D%5Cright)%5E%7B1/2%7D%0A"></p>
+<p>where <img src="https://latex.codecogs.com/png.latex?%5Crho_%7B%5Ctext%7Btypical%7D%7D"> is the geometric mean of all the <img src="https://latex.codecogs.com/png.latex?%5Crho">’s. If only A and B were in the problem, <img src="https://latex.codecogs.com/png.latex?%5Crho_%7B%5Ctext%7Btypical%7D%7D%20=%20%5Csqrt%7B4%20%5Ctimes%201%7D%20=%202">:</p>
+<ul>
+<li>A’s stride is multiplied by <img src="https://latex.codecogs.com/png.latex?%5Csqrt%7B4/2%7D%20%5Capprox%201.41">, so it gets 41% longer.</li>
+<li>B’s stride is multiplied by <img src="https://latex.codecogs.com/png.latex?%5Csqrt%7B1/2%7D%20%5Capprox%200.71">, so it gets 29% shorter.</li>
+</ul>
+<p>Dividing by the typical value keeps the group’s overall pace the same, so <img src="https://latex.codecogs.com/png.latex?%5Ceta"> and <img src="https://latex.codecogs.com/png.latex?k"> stay in charge of that. Each stride is also kept within 10 times bigger or smaller than where it started, and numbers that didn’t move at all (for example ones stuck at a limit) give no information, so they keep their stride. The referee’s fines get exactly the same treatment to update <img src="https://latex.codecogs.com/png.latex?s_i">.</p>
+<p>This idea borrows from machine learning methods called AdaGrad and DoG (“distance over gradients”). On a standard collection of hard test problems (the MIPLIB 2017 linear programs) it cut Jaddle’s solve times by about 18% on average.</p>
+</section>
+</section>
+<section id="restarts-when-in-doubt-start-fresh" class="level2">
+<h2 class="anchored" data-anchor-id="restarts-when-in-doubt-start-fresh">5. Restarts: when in doubt, start fresh</h2>
+<p>Remember the two problems with averaging? It is slow, and it never forgets the bad early guesses.</p>
+<p>The fix is the <strong>restart</strong>. Once the average has got a lot closer to the answer, Jaddle <strong>jumps</strong> both players to the average, throws away all the history, and starts a fresh average from there.</p>
+<p>Why does that help so much? The size of the circle the players run around depends on how far from the answer they start. Start closer and the next circle is smaller, so the next average is closer still, and so on. Each restart shrinks the error by a fixed fraction. “Ten times more turns for ten times more accuracy” turns into “a few more restarts for each extra digit of accuracy”.</p>
+<section id="when-to-restart" class="level3">
+<h3 class="anchored" data-anchor-id="when-to-restart">When to restart</h3>
+<p>Jaddle doesn’t know the answer (if it did, it could stop!), so it can’t measure the distance to it. Instead it uses a <strong>wrongness score</strong> made from three checks. The score is the largest of them:</p>
+<ol type="1">
+<li><strong>Broken rules.</strong> How badly does the shopper break the rules? For flour: <img src="https://latex.codecogs.com/png.latex?%5Cmax(0,%5C%203%20-%20x)">.</li>
+<li><strong>Unfair fines.</strong> Could these fines ever be the right price list? For flour, a fine above $2 makes no sense, because buying more flour would be cheaper than paying it: <img src="https://latex.codecogs.com/png.latex?%5Cmax(0,%5C%20y%20-%202)">.</li>
+<li><strong>The gap.</strong> The shopper pays <img src="https://latex.codecogs.com/png.latex?2x">. The fines tell you the least anyone could ever pay, here <img src="https://latex.codecogs.com/png.latex?3y">. At the answer these two numbers match (<img src="https://latex.codecogs.com/png.latex?2%20%5Ctimes%203%20=%203%20%5Ctimes%202%20=%206">), so the gap <img src="https://latex.codecogs.com/png.latex?%7C2x%20-%203y%7C"> should be zero.</li>
+</ol>
+<p>Each check is divided by the size of the problem’s numbers, so the score means the same thing for a tiny problem and a huge one. When all three checks are below a small tolerance (by default 0.001), Jaddle stops: it has found the answer.</p>
+<p>Write <img src="https://latex.codecogs.com/png.latex?m"> for the score now and <img src="https://latex.codecogs.com/png.latex?m_%7B%5Ctext%7Blast%7D%7D"> for the score at the last restart. Jaddle restarts when one of these happens:</p>
+<ul>
+<li><strong>Good progress:</strong> <img src="https://latex.codecogs.com/png.latex?m%20%5Cle%200.2%5C,%20m_%7B%5Ctext%7Blast%7D%7D">. The score has dropped to a fifth. Lock in the gain.</li>
+<li><strong>Stalling:</strong> <img src="https://latex.codecogs.com/png.latex?m%20%5Cle%200.8%5C,%20m_%7B%5Ctext%7Blast%7D%7D"> and the score has started going back <em>up</em>. We made some progress and it’s fading, so lock it in.</li>
+<li><strong>Taking too long:</strong> the current stretch has gone on for a long time without either of the above, so restart anyway.</li>
+</ul>
+<p>At a restart Jaddle:</p>
+<ol type="1">
+<li>jumps to whichever of the <strong>current point</strong> or the <strong>average</strong> has the better score;</li>
+<li>updates <img src="https://latex.codecogs.com/png.latex?k">, <img src="https://latex.codecogs.com/png.latex?t"> and <img src="https://latex.codecogs.com/png.latex?s"> using what it saw during the stretch;</li>
+<li>throws away the old average and starts a new one;</li>
+<li>keeps <img src="https://latex.codecogs.com/png.latex?%5Ceta">, since the step it learned is still useful.</li>
+</ol>
+</section>
+<section id="see-the-difference" class="level3">
+<h3 class="anchored" data-anchor-id="see-the-difference">See the difference</h3>
+<p>Here is the flour problem again with a fixed step size, scored by the wrongness score above. The score axis is logarithmic: each step down the axis divides the score by the same amount.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb5" data-startfrom="508" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 507;"><span id="cb5-508">restartData <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> {</span>
+<span id="cb5-509">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> merit <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> (x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y) <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">=&gt;</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(</span>
+<span id="cb5-510">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> x) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">4</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb5-511">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb5-512">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">abs</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> y) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">abs</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> x) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">abs</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> y))</span>
+<span id="cb5-513">  )<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-514">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> step <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> (x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> eta) <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">=&gt;</span> {</span>
+<span id="cb5-515">    x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> eta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-516">    y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> eta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> x))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-517">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> [x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-518">  }<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-519">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> eta <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.4</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> N <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">300</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> floor <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-16</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> rows <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> []<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-520"></span>
+<span id="cb5-521">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// No restarts: score the current point and the average.</span></span>
+<span id="cb5-522">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-523">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> N<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">++</span>) {</span>
+<span id="cb5-524">    [x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">step</span>(x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> eta)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-525">    sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-526">    rows<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>({i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">score</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(floor<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">merit</span>(x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">method</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Current point only"</span>})<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-527">    rows<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>({i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">score</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(floor<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">merit</span>(sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> i))<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">method</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Average"</span>})<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-528">  }</span>
+<span id="cb5-529"></span>
+<span id="cb5-530">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">// With restarts.</span></span>
+<span id="cb5-531">  x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-532">  <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> n <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> mLast <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">merit</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> prev <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">Infinity</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-533">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">let</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> N<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">++</span>) {</span>
+<span id="cb5-534">    [x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">step</span>(x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> eta)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-535">    n<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">++;</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-536">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> ax <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> n<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> ay <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> n<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-537">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> ma <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">merit</span>(ax<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> ay)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> mi <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">merit</span>(x<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> y)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> m <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">min</span>(ma<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> mi)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-538">    rows<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">push</span>({i<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">score</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">max</span>(floor<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> m)<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">method</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Average + restarts"</span>})<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-539">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> good <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> m <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.2</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> mLast<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-540">    <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">const</span> stalling <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> m <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.8</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> mLast <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&amp;&amp;</span> m <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;</span> prev<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-541">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (n <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&amp;&amp;</span> (good <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">||</span> stalling)) {</span>
+<span id="cb5-542">      <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (ma <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&lt;=</span> mi) { x <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ax<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> ay<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> }</span>
+<span id="cb5-543">      sx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> sy <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> n <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> mLast <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> m<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span> prev <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">Infinity</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-544">    } <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">else</span> {</span>
+<span id="cb5-545">      prev <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> m<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-546">    }</span>
+<span id="cb5-547">  }</span>
+<span id="cb5-548">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> rows<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">;</span></span>
+<span id="cb5-549">}</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb6" data-startfrom="553" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 552;"><span id="cb6-553">Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">plot</span>({</span>
+<span id="cb6-554">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">width</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">620</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-555">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">height</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">380</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-556">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">grid</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-557">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"turns →"</span>}<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-558">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">type</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"log"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">label</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"↑ wrongness score (log scale)"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">tickFormat</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">".0e"</span>}<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-559">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">color</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> {</span>
+<span id="cb6-560">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">legend</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-561">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">domain</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> [<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Current point only"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Average"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Average + restarts"</span>]<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-562">    <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">range</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> [<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#4c78a8"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#f58518"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"#54a24b"</span>]</span>
+<span id="cb6-563">  }<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span></span>
+<span id="cb6-564">  <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">marks</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> [</span>
+<span id="cb6-565">    Plot<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">line</span>(restartData<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> {<span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"i"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"score"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">stroke</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"method"</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">,</span> <span class="dt" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">strokeWidth</span><span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>})</span>
+<span id="cb6-566">  ]</span>
+<span id="cb6-567">})</span></code></pre></div></div>
+<div class="cell-output cell-output-display">
+<div id="ojs-cell-6" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+<p>The current point (blue) circles forever and never improves. The average (orange) slowly creeps in. With restarts (green) the score drops off a cliff and reaches the limit of what the computer can store (about 16 digits) in roughly 200 turns.</p>
+</section>
+</section>
+<section id="putting-it-all-together" class="level2">
+<h2 class="anchored" data-anchor-id="putting-it-all-together">Putting it all together</h2>
+<p>Here is the whole recipe in one place:</p>
+<pre class="text"><code>rescale the problem so its numbers are all about the same size
+start with x = 0 (inside its limits), y = 0, η = 1, k = a guess, all t and s = 1
+
+repeat:
+    take a trial alternating step with τ = (η / k)·t and σ = η·k·s
+    if the step was too big:  shrink η and try again
+    otherwise:                keep it, update the average, let η grow a little
+
+    every so often:
+        work out the wrongness score
+        if all three checks are tiny:  stop, we have the answer!
+        if a restart rule fires:
+            jump to the better of the current point and the average
+            update k, t and s
+            start a fresh average</code></pre>
+<p>Every part of this is either a multiplication by <img src="https://latex.codecogs.com/png.latex?A"> or <img src="https://latex.codecogs.com/png.latex?A%5E%5Ctop">, or simple arithmetic on each number separately. There are no big equation-solving steps, which is why it works on problems with millions of numbers and runs so well on graphics cards. Jaddle is written in JAX, a Python library that turns the whole loop into one fast compiled program. The same code runs on a laptop CPU, a GPU or a TPU.</p>
+<p>Jaddle also has a second solver for curvier problems (convex programs), where the cost and rules can be more complicated than straight lines. It uses the same five ideas. The only difference is that it can’t write the slopes down as <img src="https://latex.codecogs.com/png.latex?c%20+%20A%5E%5Ctop%20y">, so JAX works them out automatically.</p>
+</section>
+<section id="cheat-sheet" class="level2">
+<h2 class="anchored" data-anchor-id="cheat-sheet">Cheat sheet</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symbol</th>
+<th>Name</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?x"></td>
+<td>primal variables</td>
+<td>the shopper’s choices</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?y"></td>
+<td>dual variables</td>
+<td>the referee’s fines, one per rule</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?L(x,%20y)"></td>
+<td>Lagrangian</td>
+<td>the total bill: cost plus fines</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?%5Ctau,%5C%20%5Csigma"></td>
+<td>step sizes</td>
+<td>how far the shopper / referee move per turn</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?%5Cbar%20z"></td>
+<td>average</td>
+<td>the weighted average of everywhere they’ve been</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?%5Ceta"></td>
+<td>base step</td>
+<td>the whole group’s pace, learned as it goes</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?%5Cbar%5Ceta"></td>
+<td>safe step</td>
+<td>the largest step that won’t make them overreact</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?k"></td>
+<td>primal weight</td>
+<td>shares the pace between shopper and referee</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?t_j,%5C%20s_i"></td>
+<td>diagonal</td>
+<td>each number’s personal stride</td>
+</tr>
+<tr class="even">
+<td><img src="https://latex.codecogs.com/png.latex?%5Crho_j"></td>
+<td>drift ratio</td>
+<td>net distance ÷ total wiggle</td>
+</tr>
+<tr class="odd">
+<td><img src="https://latex.codecogs.com/png.latex?m"></td>
+<td>wrongness score</td>
+<td>the largest of: broken rules, unfair fines, gap</td>
+</tr>
+</tbody>
+</table>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how_jaddle_works.html</guid>
+  <pubDate>Wed, 21 Oct 2026 16:00:00 GMT</pubDate>
+  <media:content url="https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how-jaddle-works-logo.svg" medium="image" type="image/svg+xml"/>
+</item>
 <item>
   <title>How Much Wobble Can You Handle?</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
