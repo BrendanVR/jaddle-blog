@@ -31,5 +31,14 @@
   },
   "posts/clarabel-vs-jaddle/clarabel-vs-jaddle.qmd": {
     "clarabel-vs-jaddle.html": "4ca1e265"
+  },
+  "posts/saddle-point-solvers/saddle-point-solvers.qmd": {
+    "saddle-point-solvers.html": "bc6da01f"
+  },
+  "posts/how-jaddle-works/how_jaddle_works.qmd": {
+    "how_jaddle_works.html": "bd897043"
+  },
+  "posts/miplib-benchmark/miplib_benchmark.qmd": {
+    "miplib_benchmark.html": "0399d021"
   }
 }

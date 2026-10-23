@@ -6,6 +6,14 @@ author: "Brendan van Rooyen"
 image: fair-logistic-regression-logo.png
 date: 2026-10-21
 categories: [jaddle, optimisation, machine learning, fairness]
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
 ---
 
 Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say "yes" or "no". To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: *learn to do what they did.*

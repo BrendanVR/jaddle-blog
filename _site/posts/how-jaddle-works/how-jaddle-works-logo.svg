@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">How Jaddle Works</title>
+  <desc id="desc">A shopper and referee take alternating steps toward a shared saddle point.</desc>
+  <rect width="1024" height="1024" fill="#f7f4ed"/>
+  <circle cx="512" cy="440" r="378" fill="#e8edf3" stroke="#e4ded1" stroke-width="3"/>
+
+  <g fill="none" stroke="#b2bdc7" stroke-linecap="round" stroke-width="3">
+    <path d="M283 438C347 369 438 349 512 373C586 397 677 377 741 308"/>
+    <path d="M283 472C360 421 438 411 512 432C586 453 664 443 741 394"/>
+    <path d="M283 508C360 509 438 497 512 490C586 483 664 495 741 546"/>
+    <path d="M283 544C347 597 438 603 512 568C586 533 677 539 741 632"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M304 320C368 361 383 430 430 448C462 460 480 474 502 488" stroke="#79b9cf" stroke-width="9"/>
+    <path d="M720 320C656 361 641 430 594 448C562 460 544 474 522 488" stroke="#ee866f" stroke-width="9"/>
+    <path d="M478 488H504" stroke="#79b9cf" stroke-width="5"/>
+    <path d="M520 488H546" stroke="#ee866f" stroke-width="5"/>
+  </g>
+
+  <g stroke="#23394d" stroke-width="5">
+    <circle cx="304" cy="320" r="35" fill="#79b9cf"/>
+    <circle cx="720" cy="320" r="35" fill="#ee866f"/>
+    <circle cx="512" cy="488" r="43" fill="#f5bb55"/>
+  </g>
+  <g fill="#fffdf8">
+    <circle cx="304" cy="320" r="9"/>
+    <circle cx="720" cy="320" r="9"/>
+  </g>
+  <path d="M512 466L534 488L512 510L490 488Z" fill="#fffdf8" stroke="#23394d" stroke-width="4"/>
+
+  <g stroke="#23394d" stroke-linecap="round" stroke-linejoin="round" stroke-width="6">
+    <path d="M254 625L512 732L770 625" fill="none"/>
+    <path d="M512 732V778" fill="none"/>
+    <path d="M439 790H585" fill="none"/>
+    <rect x="218" y="573" width="72" height="73" rx="15" fill="#fffdf8"/>
+    <path d="M232 573V556C232 535 276 535 276 556V573" fill="none"/>
+    <rect x="734" y="563" width="74" height="88" rx="8" fill="#fffdf8"/>
+    <path d="M755 563V550H787V563M749 585H793M749 602H784M749 619H790" fill="none"/>
+  </g>
+  <circle cx="254" cy="625" r="10" fill="#52b49f"/>
+  <circle cx="770" cy="625" r="10" fill="#ee866f"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <text x="304" y="258" fill="#23394d" font-size="20" font-weight="700" letter-spacing="1.5">SHOPPER</text>
+    <text x="304" y="285" fill="#778899" font-size="16" letter-spacing="1">CHOOSING x</text>
+    <text x="720" y="258" fill="#23394d" font-size="20" font-weight="700" letter-spacing="1.5">REFEREE</text>
+    <text x="720" y="285" fill="#778899" font-size="16" letter-spacing="1">SETTING y</text>
+    <text x="512" y="549" fill="#23394d" font-size="18" font-weight="700">L(x, y)</text>
+    <text x="512" y="868" fill="#23394d" font-size="30" font-weight="700" letter-spacing=".4">HOW JADDLE WORKS</text>
+    <text x="512" y="920" fill="#778899" font-size="16" letter-spacing="1">JADDLE  /  OPTIMISATION STORIES</text>
+  </g>
+</svg>

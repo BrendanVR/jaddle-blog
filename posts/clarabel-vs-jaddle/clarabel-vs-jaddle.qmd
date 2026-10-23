@@ -6,6 +6,14 @@ author: "Brendan van Rooyen"
 date: 2026-10-21
 categories: [jaddle, optimisation, Clarabel, GPU]
 image: clarabel-vs-jaddle-logo.svg
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
 ---
 
 Imagine you need to get across town. You could take one expensive sports car that makes the trip in a few careful, powerful moves. Or you could take a bus that makes lots of small, cheap stops, one after another. For one passenger, the sports car wins. For a thousand passengers, the bus is the only sensible choice.

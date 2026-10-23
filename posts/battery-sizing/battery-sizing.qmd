@@ -6,6 +6,14 @@ author: "Brendan van Rooyen"
 image: battery-sizing-logo.png
 date: 2026-10-21
 categories: [jaddle, optimisation, linear programming, energy]
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
 ---
 
 Picture a building with solar panels on the roof. At midday the sun is blazing and the panels are churning out electricity. In the evening, when everyone gets home and turns on the oven, the TV and the kettle, the sun has gone down and the power has to come from the grid, at the most expensive time of day.

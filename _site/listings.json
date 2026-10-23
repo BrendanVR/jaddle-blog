@@ -2,12 +2,15 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/miplib-benchmark/miplib_benchmark.html",
+      "/posts/how-jaddle-works/how_jaddle_works.html",
       "/posts/portfolio/portfolio.html",
       "/posts/battery-sizing/battery-sizing.html",
       "/posts/robust-kalman/robust-kalman.html",
       "/posts/mpc-fleet/mpc-fleet.html",
       "/posts/fair-logistic-regression/fair-logistic-regression.html",
       "/posts/max-cut/max-cut.html",
+      "/posts/saddle-point-solvers/saddle-point-solvers.html",
       "/posts/clarabel-vs-jaddle/clarabel-vs-jaddle.html"
     ]
   }

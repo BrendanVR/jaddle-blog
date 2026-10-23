@@ -6,14 +6,14 @@ listing:
   sort: "date desc"
   type: default
   categories: true
-  sort-ui: false
-  filter-ui: false
+  sort-ui: true
+  filter-ui: true
 page-layout: full
 title-block-banner: true
 ---
 
 ::: {.jaddle-hero}
-![Jaddle logo](jaddle_logo_full.png){fig-alt="Jaddle logo"}
+![Jaddle: Saddle up with JAX](jaddle_logo_full.png){fig-alt="Jaddle: Saddle up with JAX"}
 
 [GitHub](https://github.com/BrendanVR/Jaddle){.btn .btn-outline-primary role="button"} [LinkedIn](https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3){.btn .btn-outline-primary role="button"}
 :::

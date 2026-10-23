@@ -1,0 +1,625 @@
+---
+title: "How Jaddle Works"
+subtitle: "A shopper, a referee, a horse saddle and a few clever tricks"
+description: "An explanation of how Jaddle solves optimisation problems using duality and the Lagrangian."
+author: "Brendan van Rooyen"
+image: how-jaddle-works-logo.svg
+date: 2026-10-22
+categories: [jaddle, optimisation, duality, algorithms]
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
+---
+
+::: {.callout-warning appearance="default"}
+## Warning: nerd content ahead!
+
+This article is a bit nerdy. There are equations, Greek letters and at least
+one joke about horse saddles. You don't need to understand every symbol: the
+words around each equation say what it means in plain language. If an equation
+looks scary, read the sentence after it and keep going.
+
+You have been warned. Be prepared!
+:::
+
+## What problem are we solving?
+
+Jaddle is a program that solves **optimisation problems**. That means: pick
+some numbers so that something is as small (or as big) as possible, while
+following a set of rules.
+
+Here is a tiny one. You are baking. Flour costs \$2 a kilo, and your recipe
+needs **at least 3 kilos**. How much flour should you buy to spend as little
+as possible?
+
+You already know the answer: buy exactly 3 kilos and spend \$6. Easy.
+
+Now imagine an airline planning thousands of flights, a power company
+deciding which power stations to switch on, or a delivery company routing
+hundreds of trucks. These problems have millions of numbers to choose and
+millions of rules to follow. Nobody can eyeball those. We need a recipe that a
+computer can follow, step by step, and that recipe is what this article is
+about.
+
+Mathematicians write this kind of problem (a **linear program**) like this:
+
+$$
+\text{minimise } c^\top x \quad \text{such that} \quad Ax \le b, \quad \ell \le x \le u
+$$
+
+In words:
+
+- $x$ is the list of numbers we get to choose (how much of each thing to buy).
+- $c$ is the list of prices, and $c^\top x = c_1 x_1 + c_2 x_2 + \dots$ is the
+  total cost.
+- Each row of $Ax \le b$ is one rule ("you need at least this much of that").
+- $\ell \le x \le u$ are simple limits on each number, like "you can't buy a
+  negative amount of flour".
+
+For the flour problem there is just one number, $x$ = kilos of flour. The
+cost is $2x$, the rule is $x \ge 3$ (which we can write as $3 - x \le 0$) and
+the limit is $x \ge 0$.
+
+Jaddle solves these problems in five big ideas. Let's go through them one at
+a time.
+
+## 1. Turn rules into fines (dualising and the Lagrangian)
+
+Rules are awkward for computers. They act like invisible walls, and walls are
+hard to deal with when there are millions of them.
+
+So we play a trick: **we replace every rule with a fine.**
+
+Imagine a **referee** who watches the shopper. For each rule, the referee
+chooses a fine, $y$, to charge for every kilo you are short. If you buy $x$
+kilos you are $3 - x$ kilos short, so the fine is $y \times (3 - x)$. Your
+total bill becomes
+
+$$
+L(x, y) = \underbrace{2x}_{\text{cost of flour}} + \underbrace{y\,(3 - x)}_{\text{fine for being short}}
+$$
+
+This bill has a famous name: the **Lagrangian**, after Joseph-Louis Lagrange,
+a mathematician from the 1700s. For any linear program it looks like this:
+
+$$
+L(x, y) = c^\top x + y^\top (A x - b), \qquad y \ge 0
+$$
+
+There is one fine for each rule, and the list of fines $y$ is called the
+**dual variables**. (The shopper's numbers $x$ are the **primal variables**.)
+Swapping rules for fines like this is called **dualising the constraints**.
+Fines can't be negative, because a referee doesn't pay you for breaking a
+rule. If you have *extra* flour, $3 - x$ is negative, and the referee's best
+move is to set the fine to zero. (Rules of the form "exactly equal to" also
+work. Their fines are allowed to be negative.)
+
+### A game with two players
+
+Now we have a game:
+
+- The **shopper** chooses $x$ and wants the bill $L$ to be **as small as
+  possible**.
+- The **referee** chooses $y$ and wants the bill $L$ to be **as big as
+  possible**.
+
+$$
+\min_{x} \; \max_{y \ge 0} \; L(x, y)
+$$
+
+Why does this game give the same answer as the original problem? If the
+shopper breaks the rule, the referee can make the fine enormous, so breaking
+the rule is a terrible idea. If the shopper follows the rule, the fine does
+nothing. The shopper's best move is to follow the rules and spend as little
+as possible, which is exactly the original problem. The difference is that
+there are no walls any more, just a bill to push down and fines to push up.
+
+### The saddle point
+
+For the flour problem the game ends at $x = 3$ and $y = 2$. Check it:
+
+- If the referee sets $y = 2$, the bill is $2x + 2(3 - x) = 6$ whatever $x$
+  is. The shopper can't do any better by changing $x$.
+- If the shopper buys $x = 3$, the bill is $6 + y \times 0 = 6$ whatever $y$
+  is. The referee can't do any better by changing $y$.
+
+Neither player wants to move. This spot is called a **saddle point**, because
+the bill looks like a horse saddle. Along the horse's back the saddle curves
+*up* on both sides, so the middle is the lowest point (what the shopper
+wants). Across the horse it curves *down* on both sides, so the middle is the
+highest point (what the referee wants). The middle of a saddle is the lowest
+point one way and the highest point the other way.
+
+That is where the name comes from: **Jaddle** = **J**AX + s**addle**.
+
+::: {.callout-tip}
+## Bonus: fines are prices
+
+The answer $y = 2$ means something. If your recipe needed one *more* kilo,
+your cost would go up by exactly \$2. The referee's fine tells you how much
+each rule costs you. On big problems this is very useful: it tells a company
+which of its rules are the expensive ones.
+:::
+
+## 2. Take turns walking downhill and uphill (alternating gradient descent–ascent)
+
+How do the shopper and the referee find the saddle point? They feel which way
+the ground slopes and take small steps.
+
+The **gradient** is the slope: it says which direction is uphill and how
+steep it is. For the flour bill the slopes are
+
+$$
+\frac{\partial L}{\partial x} = 2 - y, \qquad \frac{\partial L}{\partial y} = 3 - x
+$$
+
+These say something sensible:
+
+- If the fine $y$ is less than \$2, flour costs more than the fine it saves
+  you, so the shopper wants to buy **less**.
+- If $x$ is less than 3, the shopper is short of flour, so the referee wants
+  to make the fine **bigger**.
+
+For any linear program the slopes are $c + A^\top y$ for the shopper and
+$Ax - b$ for the referee.
+
+The shopper walks **downhill** (makes the bill smaller) and the referee walks
+**uphill** (makes the bill bigger). They take turns, and the referee always
+reacts to the shopper's *newest* choice. That is why it is called
+**alternating**:
+
+$$
+x_{\text{new}} = \text{clip}\Big(x - \tau\,\big(c + A^\top y\big)\Big)
+$$
+
+$$
+y_{\text{new}} = \max\Big(0,\; y + \sigma\,\big(A x_{\text{new}} - b\big)\Big)
+$$
+
+Here $\tau$ (tau) and $\sigma$ (sigma) are **step sizes**: how far each
+player moves per turn. "clip" pushes $x$ back inside its limits, and
+$\max(0, \cdot)$ stops fines going negative.
+
+Each turn only needs two multiplications by the big table of rules: one by
+$A$ and one by its flipped version $A^\top$. That is cheap even when $A$ has
+millions of rows, and graphics cards (GPUs) are very good at it. Methods that
+only use slopes like this are called **first-order methods**.
+
+### Try it
+
+Drag the sliders and watch the shopper and referee move. Each blue dot is one
+turn. Both start at zero.
+
+```{ojs}
+function simulate(eta, n) {
+  let x = 0, y = 0, sx = 0, sy = 0;
+  const pts = [];
+  for (let i = 1; i <= n; i++) {
+    x = Math.max(0, x - eta * (2 - y));   // shopper walks downhill
+    y = Math.max(0, y + eta * (3 - x));   // referee walks uphill
+    sx += x; sy += y;
+    pts.push({i, x, y, ax: sx / i, ay: sy / i});
+  }
+  return pts;
+}
+```
+
+```{ojs}
+function saddlePlot(pts, showAvg) {
+  const marks = [
+    Plot.line(pts, {x: "x", y: "y", stroke: "#4c78a8", strokeOpacity: 0.45}),
+    Plot.dot(pts, {x: "x", y: "y", r: 2.5, fill: "#4c78a8"})
+  ];
+  if (showAvg) {
+    marks.push(Plot.line(pts, {x: "ax", y: "ay", stroke: "#f58518", strokeWidth: 2.5}));
+    marks.push(Plot.dot(pts.slice(-1), {x: "ax", y: "ay", r: 6, fill: "#f58518"}));
+  }
+  marks.push(Plot.dot([{x: 3, y: 2}], {x: "x", y: "y", r: 7, fill: "#e45756", stroke: "white"}));
+  marks.push(Plot.text([{x: 3, y: 2}], {x: "x", y: "y", text: d => "saddle point (3, 2)", dy: -14}));
+  return Plot.plot({
+    width: 520,
+    height: 420,
+    grid: true,
+    x: {domain: [0, 6.5], label: "x = kilos of flour (shopper) →"},
+    y: {domain: [0, 5.5], label: "↑ y = fine per missing kilo (referee)"},
+    marks
+  });
+}
+```
+
+```{ojs}
+viewof eta1 = Inputs.range([0.05, 1.2], {value: 0.3, step: 0.05, label: "Step size"})
+viewof n1 = Inputs.range([5, 300], {value: 60, step: 5, label: "Number of turns"})
+saddlePlot(simulate(eta1, n1), false)
+```
+
+Did you spot the problem? **They go round in circles!** The shopper reacts to
+the referee, the referee reacts to the shopper, and they chase each other
+around the saddle point like two kids running around a table. Neither ever
+catches the other. Smaller steps make smoother circles, but they are still
+circles.
+
+The good news is in the picture too: the circles go *around* the answer.
+
+## 3. The average is smarter than the walker (averaging)
+
+What is in the middle of a circle? The centre! And if you take lots of points
+spread evenly around a circle and average them, you land near the centre.
+
+So Jaddle keeps a running **average** of everywhere the players have been.
+Write $z = (x, y)$ for both players' positions together. After $N$ turns the
+average is
+
+$$
+\bar z_N = \frac{\eta_1 z_1 + \eta_2 z_2 + \dots + \eta_N z_N}{\eta_1 + \eta_2 + \dots + \eta_N}
+$$
+
+Each position is weighted by the step size $\eta_n$ used to reach it (more on
+$\eta$ in the next section), so bigger steps count for more. Jaddle doesn't
+store every old position. It nudges the average a little towards each new
+point, which costs almost nothing.
+
+Think of a dog on a lead running in circles around a post. Take a photo every
+second and average the dog's position over all the photos: you get the post.
+
+The orange line below is the average. Turn up the number of turns and watch
+it home in on the answer.
+
+```{ojs}
+viewof eta2 = Inputs.range([0.05, 1.2], {value: 0.3, step: 0.05, label: "Step size"})
+viewof n2 = Inputs.range([5, 300], {value: 150, step: 5, label: "Number of turns"})
+saddlePlot(simulate(eta2, n2), true)
+```
+
+There is a catch. The average gets there **slowly**: to be 10 times more
+accurate you need about 10 times more turns. It also never forgets. The very
+first guesses, which were far from the answer, keep dragging the average away
+forever. We fix both problems in section 5.
+
+## 4. Choosing step sizes: $\eta$, $k$, $t$ and $s$
+
+Steps that are too big overshoot and fly off. Steps that are too small take
+forever. Worse, different numbers in the same problem can need very different
+step sizes. One might be measured in millimetres and another in kilometres.
+
+Jaddle builds every step size out of four pieces:
+
+$$
+\tau_j = \frac{\eta}{k}\, t_j \qquad\qquad \sigma_i = \eta\, k\, s_i
+$$
+
+$\tau_j$ is the step for the shopper's $j$-th number, and $\sigma_i$ is the
+step for the referee's $i$-th fine. Think of a group out on a hike:
+
+| Piece | Who it affects | Hiking version |
+|---|---|---|
+| $\eta$ (eta) | everyone | how fast the whole group walks |
+| $k$ | shopper vs. referee | whether the shopper team or the referee team walks faster |
+| $t_j$ | the shopper's $j$-th number | how long one shopper's stride is |
+| $s_i$ | the referee's $i$-th fine | how long one referee's stride is |
+
+Before any of this starts, Jaddle **rescales** the problem so that the numbers
+in $A$, $b$ and $c$ are all roughly the same size. It is a bit like converting
+every measurement to the same units. (The methods are called Ruiz and
+Pock–Chambolle scaling, if you want to look them up.) On top of that, $t$ and
+$s$ start at 1 and are then **adapted** as the solver learns more about the
+problem. Giving each number its own multiplier like this is called
+**diagonal preconditioning**: "diagonal" because if you wrote the multipliers
+into a table, they would only appear along its diagonal.
+
+### $\eta$: a step that checks itself
+
+Nobody tells Jaddle the right step size. It works it out as it goes, like
+this.
+
+**Take a trial step.** Then measure two things:
+
+$$
+\text{movement} = k\,\lVert \Delta x\rVert^2 + \frac{1}{k}\,\lVert \Delta y \rVert^2
+\qquad\qquad
+\text{interaction} = \big|\,\Delta y^\top A\, \Delta x\,\big|
+$$
+
+$\Delta x$ and $\Delta y$ are how much each player changed, and
+$\lVert \Delta x \rVert^2$ means "square each change and add them up". The
+**movement** is how far the players went. The **interaction** is how hard
+their two moves pushed against each other through the rules in $A$.
+
+The interaction is what causes trouble. When the shopper's move and the
+referee's move push on each other too hard, they overreact and fly off. When
+the moves are big compared with how much they disturb each other, the step is
+safe. The largest safe step is
+
+$$
+\bar\eta = \frac{\text{movement}}{2 \times \text{interaction}}
+$$
+
+- **If $\eta$ was bigger than $\bar\eta$**, the step was too greedy. Jaddle
+  throws it away, shrinks $\eta$ to just under $\bar\eta$, and tries again.
+- **If $\eta$ was safe**, Jaddle keeps the step and lets $\eta$ grow a little
+  for next time:
+
+$$
+\eta_{\text{next}} = \min\Big(\; \big(1 - (n+1)^{-0.3}\big)\,\bar\eta, \;\;\; \big(1 + (n+1)^{-0.6}\big)\,\eta \;\Big)
+$$
+
+Don't worry about the odd powers; $n$ just counts the steps taken so far. The
+first part says "stay a bit below the safe limit". The second says "grow, but
+by less and less as time goes on". At the start $\eta$ can grow by up to 66%
+in one go. After a thousand steps it can only grow by about 1.6%.
+
+This means Jaddle never needs to know in advance how big $A$ can make things,
+which is expensive to work out for a huge problem. It also fixes a bad
+starting guess for $\eta$ within a few steps. (When $t$ and $s$ are switched
+on, the movement is measured with each number's change divided by its own
+$t_j$ or $s_i$, but the idea is the same.)
+
+### $k$: who should walk faster?
+
+Sometimes the shopper is nearly at the answer while the referee still has a
+long way to go, or the other way round. $k$ shares the step between them: a
+bigger $k$ makes the referee's steps longer ($\eta k$) and the shopper's
+shorter ($\eta / k$). It doesn't make the steps riskier overall, because the
+two step sizes multiplied together are always $\eta^2$, whatever $k$ is.
+
+Jaddle updates $k$ at every restart (section 5). It looks at how far each
+player travelled during the last stretch:
+
+$$
+k_{\text{target}} = \frac{\lVert \Delta y \rVert}{\lVert \Delta x \rVert}
+$$
+
+If the referee travelled further, the referee probably still has further to
+go, so the referee should get the longer stride. Jaddle doesn't jump straight
+to the target, because one stretch of measurements can be misleading. It
+meets the old value halfway, in the multiplying sense:
+
+$$
+k_{\text{new}} = \sqrt{k_{\text{old}} \times k_{\text{target}}}
+$$
+
+This is the **geometric mean**. For example, if $k_{\text{old}} = 1$ and
+$k_{\text{target}} = 100$, then $k_{\text{new}} = \sqrt{100} = 10$. Why not the
+ordinary average? Because $k$ is a ratio. $k = 100$ and $k = 1/100$ are
+equally lopsided, just in opposite directions, and the geometric mean treats
+them fairly. Jaddle also keeps $k$ between $10^{-8}$ and $10^{8}$ so it can
+never run away. The very first $k$ is a guess based on the sizes of $c$ and
+$b$.
+
+### $t$ and $s$: every number gets its own stride
+
+$\eta$ and $k$ treat big groups of numbers the same. But inside a problem
+with a million numbers, some are marching steadily towards their answer
+while others are jittering back and forth. $t$ and $s$ give each number its
+own stride.
+
+At each restart, Jaddle looks back over the last stretch at each number $j$
+and works out two things:
+
+- its **net distance** $r_j$: how far it ended up from where it started;
+- its **total wiggle** $H_j$: the size of every step it took, squared and
+  added up.
+
+Then it divides one by the other:
+
+$$
+\rho_j = \frac{r_j}{\sqrt{H_j}}
+$$
+
+Here is what $\rho$ (rho) looks like for three numbers that each took 16
+steps of size 1, so $\sqrt{H} = \sqrt{16} = 4$ for all of them:
+
+| Number | What it did | Net distance $r$ | $\rho = r / 4$ | Meaning |
+|---|---|---|---|---|
+| A | 16 steps forward | 16 | 4 | marching steadily |
+| B | 10 forward, 6 back | 4 | 1 | wandering a bit |
+| C | forward, back, forward, back... | 0 | 0 | jittering on the spot |
+
+A big $\rho$ means the number knows where it is going, so it should take
+**bigger** steps. A small $\rho$ means it keeps overshooting and coming back,
+so it should take **smaller** steps. Jaddle updates each number's stride with
+
+$$
+t_j \;\leftarrow\; t_j \times \left(\frac{\rho_j}{\rho_{\text{typical}}}\right)^{1/2}
+$$
+
+where $\rho_{\text{typical}}$ is the geometric mean of all the $\rho$'s. If
+only A and B were in the problem, $\rho_{\text{typical}} = \sqrt{4 \times 1} = 2$:
+
+- A's stride is multiplied by $\sqrt{4/2} \approx 1.41$, so it gets 41% longer.
+- B's stride is multiplied by $\sqrt{1/2} \approx 0.71$, so it gets 29% shorter.
+
+Dividing by the typical value keeps the group's overall pace the same, so
+$\eta$ and $k$ stay in charge of that. Each stride is also kept within 10
+times bigger or smaller than where it started, and numbers that didn't move
+at all (for example ones stuck at a limit) give no information, so they keep
+their stride. The referee's fines get exactly the same treatment to update
+$s_i$.
+
+This idea borrows from machine learning methods called AdaGrad and DoG
+("distance over gradients"). On a standard collection of hard test problems
+(the MIPLIB 2017 linear programs) it cut Jaddle's solve times by about 18% on
+average.
+
+## 5. Restarts: when in doubt, start fresh
+
+Remember the two problems with averaging? It is slow, and it never forgets
+the bad early guesses.
+
+The fix is the **restart**. Once the average has got a lot closer to the
+answer, Jaddle **jumps** both players to the average, throws away all the
+history, and starts a fresh average from there.
+
+Why does that help so much? The size of the circle the players run around
+depends on how far from the answer they start. Start closer and the next
+circle is smaller, so the next average is closer still, and so on. Each
+restart shrinks the error by a fixed fraction. "Ten times more turns for ten
+times more accuracy" turns into "a few more restarts for each extra digit of
+accuracy".
+
+### When to restart
+
+Jaddle doesn't know the answer (if it did, it could stop!), so it can't
+measure the distance to it. Instead it uses a **wrongness score** made from
+three checks. The score is the largest of them:
+
+1. **Broken rules.** How badly does the shopper break the rules? For flour:
+   $\max(0,\ 3 - x)$.
+2. **Unfair fines.** Could these fines ever be the right price list? For
+   flour, a fine above \$2 makes no sense, because buying more flour would be
+   cheaper than paying it: $\max(0,\ y - 2)$.
+3. **The gap.** The shopper pays $2x$. The fines tell you the least anyone
+   could ever pay, here $3y$. At the answer these two numbers match
+   ($2 \times 3 = 3 \times 2 = 6$), so the gap $|2x - 3y|$ should be zero.
+
+Each check is divided by the size of the problem's numbers, so the score
+means the same thing for a tiny problem and a huge one. When all three checks
+are below a small tolerance (by default 0.001), Jaddle stops: it has found the
+answer.
+
+Write $m$ for the score now and $m_{\text{last}}$ for the score at the last
+restart. Jaddle restarts when one of these happens:
+
+- **Good progress:** $m \le 0.2\, m_{\text{last}}$. The score has dropped to a
+  fifth. Lock in the gain.
+- **Stalling:** $m \le 0.8\, m_{\text{last}}$ and the score has started going
+  back *up*. We made some progress and it's fading, so lock it in.
+- **Taking too long:** the current stretch has gone on for a long time without
+  either of the above, so restart anyway.
+
+At a restart Jaddle:
+
+1. jumps to whichever of the **current point** or the **average** has the
+   better score;
+2. updates $k$, $t$ and $s$ using what it saw during the stretch;
+3. throws away the old average and starts a new one;
+4. keeps $\eta$, since the step it learned is still useful.
+
+### See the difference
+
+Here is the flour problem again with a fixed step size, scored by the
+wrongness score above. The score axis is logarithmic: each step down the
+axis divides the score by the same amount.
+
+```{ojs}
+restartData = {
+  const merit = (x, y) => Math.max(
+    Math.max(0, 3 - x) / 4,
+    Math.max(0, y - 2) / 3,
+    Math.abs(2 * x - 3 * y) / (1 + Math.abs(2 * x) + Math.abs(3 * y))
+  );
+  const step = (x, y, eta) => {
+    x = Math.max(0, x - eta * (2 - y));
+    y = Math.max(0, y + eta * (3 - x));
+    return [x, y];
+  };
+  const eta = 0.4, N = 300, floor = 1e-16, rows = [];
+
+  // No restarts: score the current point and the average.
+  let x = 0, y = 0, sx = 0, sy = 0;
+  for (let i = 1; i <= N; i++) {
+    [x, y] = step(x, y, eta);
+    sx += x; sy += y;
+    rows.push({i, score: Math.max(floor, merit(x, y)), method: "Current point only"});
+    rows.push({i, score: Math.max(floor, merit(sx / i, sy / i)), method: "Average"});
+  }
+
+  // With restarts.
+  x = 0; y = 0; sx = 0; sy = 0;
+  let n = 0, mLast = merit(0, 0), prev = Infinity;
+  for (let i = 1; i <= N; i++) {
+    [x, y] = step(x, y, eta);
+    n++; sx += x; sy += y;
+    const ax = sx / n, ay = sy / n;
+    const ma = merit(ax, ay), mi = merit(x, y), m = Math.min(ma, mi);
+    rows.push({i, score: Math.max(floor, m), method: "Average + restarts"});
+    const good = m <= 0.2 * mLast;
+    const stalling = m <= 0.8 * mLast && m > prev;
+    if (n >= 10 && (good || stalling)) {
+      if (ma <= mi) { x = ax; y = ay; }
+      sx = 0; sy = 0; n = 0; mLast = m; prev = Infinity;
+    } else {
+      prev = m;
+    }
+  }
+  return rows;
+}
+```
+
+```{ojs}
+Plot.plot({
+  width: 620,
+  height: 380,
+  grid: true,
+  x: {label: "turns →"},
+  y: {type: "log", label: "↑ wrongness score (log scale)", tickFormat: ".0e"},
+  color: {
+    legend: true,
+    domain: ["Current point only", "Average", "Average + restarts"],
+    range: ["#4c78a8", "#f58518", "#54a24b"]
+  },
+  marks: [
+    Plot.line(restartData, {x: "i", y: "score", stroke: "method", strokeWidth: 2})
+  ]
+})
+```
+
+The current point (blue) circles forever and never improves. The average
+(orange) slowly creeps in. With restarts (green) the score drops off a cliff
+and reaches the limit of what the computer can store (about 16 digits) in
+roughly 200 turns.
+
+## Putting it all together
+
+Here is the whole recipe in one place:
+
+```text
+rescale the problem so its numbers are all about the same size
+start with x = 0 (inside its limits), y = 0, η = 1, k = a guess, all t and s = 1
+
+repeat:
+    take a trial alternating step with τ = (η / k)·t and σ = η·k·s
+    if the step was too big:  shrink η and try again
+    otherwise:                keep it, update the average, let η grow a little
+
+    every so often:
+        work out the wrongness score
+        if all three checks are tiny:  stop, we have the answer!
+        if a restart rule fires:
+            jump to the better of the current point and the average
+            update k, t and s
+            start a fresh average
+```
+
+Every part of this is either a multiplication by $A$ or $A^\top$, or simple
+arithmetic on each number separately. There are no big equation-solving
+steps, which is why it works on problems with millions of numbers and runs so
+well on graphics cards. Jaddle is written in JAX, a Python library that turns
+the whole loop into one fast compiled program. The same code runs on a laptop
+CPU, a GPU or a TPU.
+
+Jaddle also has a second solver for curvier problems (convex programs), where
+the cost and rules can be more complicated than straight lines. It uses the
+same five ideas. The only difference is that it can't write the slopes down
+as $c + A^\top y$, so JAX works them out automatically.
+
+## Cheat sheet
+
+| Symbol | Name | What it means |
+|---|---|---|
+| $x$ | primal variables | the shopper's choices |
+| $y$ | dual variables | the referee's fines, one per rule |
+| $L(x, y)$ | Lagrangian | the total bill: cost plus fines |
+| $\tau,\ \sigma$ | step sizes | how far the shopper / referee move per turn |
+| $\bar z$ | average | the weighted average of everywhere they've been |
+| $\eta$ | base step | the whole group's pace, learned as it goes |
+| $\bar\eta$ | safe step | the largest step that won't make them overreact |
+| $k$ | primal weight | shares the pace between shopper and referee |
+| $t_j,\ s_i$ | diagonal | each number's personal stride |
+| $\rho_j$ | drift ratio | net distance ÷ total wiggle |
+| $m$ | wrongness score | the largest of: broken rules, unfair fines, gap |

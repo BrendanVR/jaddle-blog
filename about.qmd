@@ -1,6 +1,6 @@
 ---
 title: "About"
-image: jaddle_logo_no_text_square.png
+image: jaddle_logo_no_text_circle.png
 about:
   template: jolla
   links:

@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.19">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Brendan van Rooyen">
+<meta name="dcterms.date" content="2026-10-23">
+<meta name="description" content="A look at Jaddle on hard LPs">
+
+<title>Jaddle on the hard MIPLIB LP benchmark: 382 of 383 – Jaddle</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../jaddle_logo_no_text_square.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-dd3150c085def9886caf0979d71faa21.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<style>html{ scroll-behavior: smooth; }</style>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta property="og:title" content="Jaddle on the hard MIPLIB LP benchmark: 382 of 383 – Jaddle">
+<meta property="og:description" content="A look at Jaddle on hard LPs">
+<meta property="og:image" content="https://brendanvr.github.io/jaddle-blog/posts/miplib-benchmark/figures/certified_vs_time.png">
+<meta property="og:site_name" content="Jaddle">
+<meta property="og:image:alt" content="Step curve of instances certified against solve time on a log axis from 0.5 seconds to 1 hour. The curve rises steeply between 1 and 10 seconds, reaches 365 by 1 minute and 382 by the 1 hour limit, one short of the 383 instances in the set.">
+<meta property="og:image:height" content="800">
+<meta property="og:image:width" content="1520">
+<meta name="twitter:title" content="Jaddle on the hard MIPLIB LP benchmark: 382 of 383 – Jaddle">
+<meta name="twitter:description" content="A look at Jaddle on hard LPs">
+<meta name="twitter:image" content="https://brendanvr.github.io/jaddle-blog/posts/miplib-benchmark/jaddle_logo_full.png">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a href="../../index.html" class="navbar-brand navbar-brand-logo">
+    <img src="../../jaddle_logo_no_text_square.png" alt="Jaddle" class="navbar-logo light-content">
+    <img src="../../jaddle_logo_no_text_square.png" alt="Jaddle" class="navbar-logo dark-content">
+    </a>
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Jaddle</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/BrendanVR/Jaddle"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3"> <i class="bi bi-linkedin" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Jaddle on the hard MIPLIB LP benchmark: 382 of 383</h1>
+            <p class="subtitle lead">Jaddle’s performance on MIPLIB LP Relaxations</p>
+                  <div>
+        <div class="description">
+          A look at Jaddle on hard LPs
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">jaddle</div>
+                <div class="quarto-category">optimisation</div>
+                <div class="quarto-category">linear programming</div>
+                <div class="quarto-category">benchmarks</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Brendan van Rooyen </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">October 23, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul class="collapse">
+  <li><a href="#the-benchmark-set" id="toc-the-benchmark-set" class="nav-link active" data-scroll-target="#the-benchmark-set">The benchmark set</a></li>
+  <li><a href="#experiment-setup" id="toc-experiment-setup" class="nav-link" data-scroll-target="#experiment-setup">Experiment setup</a></li>
+  <li><a href="#presolve-highs-plus-a-jaddle-specific-reduction" id="toc-presolve-highs-plus-a-jaddle-specific-reduction" class="nav-link" data-scroll-target="#presolve-highs-plus-a-jaddle-specific-reduction">Presolve: HiGHS plus a Jaddle-specific reduction</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
+  <li><a href="#case-study-hgms62-the-one-that-got-away" id="toc-case-study-hgms62-the-one-that-got-away" class="nav-link" data-scroll-target="#case-study-hgms62-the-one-that-got-away">Case study: hgms62, the one that got away</a></li>
+  <li><a href="#caveats-and-reproducing-the-run" id="toc-caveats-and-reproducing-the-run" class="nav-link" data-scroll-target="#caveats-and-reproducing-the-run">Caveats and reproducing the run</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<p>With default settings, Jaddle certified 382 of the 383 LP relaxations in the PDLP papers’ hard MIPLIB 2017 set, to a relative tolerance of 1e-4, on a single laptop GPU. The shifted geometric mean solve time was 6.9 seconds, and half the instances finished in under 3.2 seconds.</p>
+<p>Jaddle is a saddle-point solver written entirely in JAX, so it runs unchanged on CPU, GPU and TPU. Its algorithm is explained in the <a href="../how-jaddle-works/">How Jaddle Works</a> post. First-order LP solvers are fast per iteration but have a reputation for being fragile. Some instances stall for thousands of iterations, and the usual fix is per-instance tuning. This article shows that a fixed configuration can clear almost the whole benchmark.</p>
+<p>It also looks at the one instance that did not converge, hgms62. It was within a factor of about four of the tolerance when the clock ran out. Changing one setting from its default gets it over the line.</p>
+<section id="the-benchmark-set" class="level2">
+<h2 class="anchored" data-anchor-id="the-benchmark-set">The benchmark set</h2>
+<p>The test set is the 383 MIPLIB 2017 instances used to evaluate PDLP and cuPDLP, taken from the <code>mip_relaxations_instance_list</code> in FirstOrderLp.jl. Each instance has between 100,000 and 10 million nonzeros. Integrality is dropped, so every instance is solved as a plain LP.</p>
+<p>The set is hard for first-order methods for reasons that have little to do with size:</p>
+<ul>
+<li><strong>Wide coefficient ranges.</strong> Many instances mix coefficients of 1 with big-M terms of 1e6 or more. Diagonal scaling cannot fully remove this, and it slows Jaddle down a lot.</li>
+<li><strong>Hidden objectives.</strong> Some models put the objective in a dense equality row, such as <code>min z</code> subject to <code>z = Σ aⱼxⱼ</code>. The real cost structure is then hidden in the constraints, and the primal iterates drift off feasibility.</li>
+<li><strong>Degeneracy and long tails.</strong> Many relaxations have large optimal faces or near-parallel constraints. Iterates then circle the optimum for a long time before the duality gap closes.</li>
+</ul>
+<p>The instances range from 150 to 1.45 million columns and from 36 to 2.95 million rows. One configuration has to handle all of them.</p>
+</section>
+<section id="experiment-setup" class="level2">
+<h2 class="anchored" data-anchor-id="experiment-setup">Experiment setup</h2>
+<p>Every instance ran through the same pipeline with the same solver settings. Nothing was tuned per instance.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hardware</td>
+<td>One NVIDIA GeForce RTX 5070 Ti Laptop GPU</td>
+</tr>
+<tr class="even">
+<td>Precision</td>
+<td>float64</td>
+</tr>
+<tr class="odd">
+<td>Solver settings</td>
+<td><code>jl.solve</code> defaults: alternating update, adaptive step size, adaptive restarts, adaptive diagonal scaling with <code>diag_clamp=10</code></td>
+</tr>
+<tr class="even">
+<td>Presolve</td>
+<td>HiGHS presolve, then Jaddle’s defined-variable elimination</td>
+</tr>
+<tr class="odd">
+<td>Tolerance</td>
+<td>1e-4, relative, on primal feasibility, dual feasibility and duality gap</td>
+</tr>
+<tr class="even">
+<td>Residual norm</td>
+<td>l2</td>
+</tr>
+<tr class="odd">
+<td>Time limit</td>
+<td>3,600 seconds per instance</td>
+</tr>
+<tr class="even">
+<td>Harness</td>
+<td><code>benchmarks/benchmark.py --tol 1e-4 --max-seconds 3600</code></td>
+</tr>
+</tbody>
+</table>
+<p>An instance counts as converged when Jaddle returns a full optimality certificate on the presolved LP. All three residuals must be below the tolerance. Jaddle does not stop on a heuristic such as objective stalling.</p>
+<p>The headline time is the iteration loop, including the one-off XLA compile on the first epoch. Wall time adds presolve, scaling, setup and postsolve. Unsolved instances count at the full 3,600 seconds in every average, as in the PDLP papers.</p>
+<section id="why-a-tolerance-of-1e-4" class="level3">
+<h3 class="anchored" data-anchor-id="why-a-tolerance-of-1e-4">Why a tolerance of 1e-4</h3>
+<p>A relative tolerance of 1e-4 is the “quick and ready” setting. It puts the objective within about 0.01% of optimal, with constraint violations of the same relative size. For many uses that is the answer:</p>
+<ul>
+<li><strong>Planning and what-if runs</strong>, where the input data is far less accurate than 1e-4.</li>
+<li><strong>MIP root relaxations and bounds</strong>, where a near-optimal dual bound is what matters.</li>
+<li><strong>Warm starts and crossover.</strong> A 1e-4 point is close enough to the optimal face that a simplex repair is cheap. On mzzv11, crossover from a 1e-4 point took 125 to 6,077 pivots, against 47,774 for HiGHS’s simplex from a cold start.</li>
+</ul>
+<p>First-order methods also slow down as they approach the optimum, so each extra digit costs more than the last. Stopping at 1e-4 keeps the solver where it is fastest. The PDLP papers use 1e-4 as their moderate-accuracy level, which makes the results comparable.</p>
+<p>When more accuracy is needed, Jaddle provides tools that start from a 1e-4 solution: feasibility polishing (<code>jl.solve_with_polishing</code>), iterative refinement (<code>jl.solve_with_refinement</code>) and crossover to an exact vertex (<code>jl.crossover</code>).</p>
+</section>
+</section>
+<section id="presolve-highs-plus-a-jaddle-specific-reduction" class="level2">
+<h2 class="anchored" data-anchor-id="presolve-highs-plus-a-jaddle-specific-reduction">Presolve: HiGHS plus a Jaddle-specific reduction</h2>
+<p>Each instance goes through <code>jl.solve_with_presolve</code> with the defined-variable elimination switched on. It runs five steps:</p>
+<ol type="1">
+<li><strong>HiGHS presolve</strong> removes redundant rows and columns, fixes variables and tightens bounds.</li>
+<li><strong>Defined-variable elimination</strong>, Jaddle’s own reduction, removes dense defining rows that HiGHS keeps.</li>
+<li><strong>Jaddle</strong> solves the reduced LP.</li>
+<li><strong>Elimination postsolve</strong> recovers the eliminated variables and the duals of their rows.</li>
+<li><strong>HiGHS postsolve</strong> maps the primal and dual solution back to the original model.</li>
+</ol>
+<p>Presolve is cheap next to the solve. The median presolve time was 0.28 seconds. HiGHS kept a median of 95% of the columns. Presolve also solved one instance outright: neos-787933, with 236,376 columns, which counts as one of the 382.</p>
+<section id="why-jaddle-needs-its-own-presolve" class="level3">
+<h3 class="anchored" data-anchor-id="why-jaddle-needs-its-own-presolve">Why Jaddle needs its own presolve</h3>
+<p>Standard presolvers are built for simplex and interior-point methods, which factorise matrices. For those methods, fill-in is expensive and a dense row is cheap. Jaddle has the opposite trade-off. It only does matrix-vector products, so extra nonzeros cost little. But some row structures damage the conditioning that decides how fast it converges.</p>
+<p>The worst of these is a <strong>defined variable</strong>: a row <code>a·z + r·x = b</code> that defines <code>z</code> as a combination of other variables. In gmut-* and leo1, <code>z</code> is a zero-cost aggregate whose coefficients mirror the objective. In proteindesign*, <code>z</code> is the objective itself: <code>min z</code> subject to <code>z = Σ aⱼxⱼ</code>. In both cases, the dense row hides the objective structure from the scaling, and the primal iterates drift off feasibility.</p>
+<p>HiGHS and SCIP leave these rows alone for three reasons. <code>z</code> is not a column singleton, because inequality rows use it too. It is not free, so substituting it needs an explicit bound row. And substituting a dense row breaks their fill-in limits.</p>
+</section>
+<section id="what-the-elimination-does" class="level3">
+<h3 class="anchored" data-anchor-id="what-the-elimination-does">What the elimination does</h3>
+<p><code>jaddle.presolve.eliminate_defined_variables</code> substitutes <code>z = E·x + const</code> throughout the model:</p>
+<ul>
+<li>The cost of <code>z</code> moves onto <code>x</code>, and any constant goes into the objective offset.</li>
+<li>Inequality rows that use <code>z</code> get the substitution added to them.</li>
+<li>Bounds on <code>z</code> become rows on <code>x</code>, unless the bounds on <code>x</code> already imply them.</li>
+</ul>
+<p>The rules are conservative. A zero-cost aggregate row needs at least 100 nonzeros to qualify. An objective row qualifies from 2 nonzeros, because a short objective row hides the objective just as well. <code>z</code> may appear in at most four inequality rows. Total fill-in is capped at the original nonzero count. Later passes follow objective chains only, pushing the cost down onto the decision variables. On radiationm40-10-02, for example, <code>min z, z = 1601 N + T</code> is followed by rows that define <code>N</code> and <code>T</code>.</p>
+<p>The postsolve recovers both the eliminated primal values and the duals of the removed rows. The mapped primal-dual pair is exactly as feasible and optimal as the reduced one.</p>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Jaddle certified 382 of 383 instances, and most of them in seconds. Half finished in under 3.2 seconds, 90% in under 25 seconds, and only four needed more than five minutes.</p>
+<div id="fig-certified" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Step curve of instances certified against solve time on a log axis from 0.5 seconds to 1 hour. The curve rises steeply between 1 and 10 seconds, reaches 365 by 1 minute and 382 by the 1 hour limit, one short of the 383 instances in the set.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-certified-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="figures/certified_vs_time.png" class="img-fluid figure-img" alt="Step curve of instances certified against solve time on a log axis from 0.5 seconds to 1 hour. The curve rises steeply between 1 and 10 seconds, reaches 365 by 1 minute and 382 by the 1 hour limit, one short of the 383 instances in the set.">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-certified-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: 365 of 383 instances certified within a minute, 382 within the hour. Instances certified to 1e-4 against solve time (log scale), default settings, one laptop GPU. Times are the iteration loop, including XLA compile; neos-787933, solved by presolve, is counted at the start.
+</figcaption>
+</figure>
+</div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Outcome</th>
+<th>Instances</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Certified optimal on the presolved LP</td>
+<td><strong>382 / 383</strong> (381 by Jaddle, 1 by presolve)</td>
+</tr>
+<tr class="even">
+<td>Time limit reached</td>
+<td>1 (hgms62)</td>
+</tr>
+<tr class="odd">
+<td>Errors or numerical failures</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>The table below gives shifted geometric means with a 10-second shift (SGM10), the PDLP papers’ summary statistic. hgms62 counts at 3,600 seconds.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Time measured</th>
+<th>SGM10</th>
+<th>Median, certified instances</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Iteration loop, including first-epoch XLA compile</td>
+<td>6.86 s</td>
+<td>3.19 s</td>
+</tr>
+<tr class="even">
+<td>Iteration loop, compile amortised out</td>
+<td>4.72 s</td>
+<td>1.29 s</td>
+</tr>
+<tr class="odd">
+<td>Wall clock, including presolve, scaling, setup and postsolve</td>
+<td>9.56 s</td>
+<td>5.11 s</td>
+</tr>
+</tbody>
+</table>
+<p>The median instance needed only 8 epochs. The long tail is short. Apart from hgms62, the slowest instances were snp-02-004-104 at 761 seconds, hgms30 at 1,190 seconds and fhnw-binschedule1 at 1,550 seconds. All three finished well inside the limit.</p>
+<p>The gap between the first two rows is compile time. Every new problem shape triggers an XLA compile, which costs one to two seconds. On small instances it is often most of the solve. Jaddle caches compiled programs on disk, so repeat solves of a same-shaped model skip it.</p>
+</section>
+<section id="case-study-hgms62-the-one-that-got-away" class="level2">
+<h2 class="anchored" data-anchor-id="case-study-hgms62-the-one-that-got-away">Case study: hgms62, the one that got away</h2>
+<p>hgms62 is the only instance Jaddle did not certify with default settings. It ran for the full hour, about 2.9 million iterations, and stopped close to the tolerance but not inside it.</p>
+<section id="the-instance" class="level3">
+<h3 class="anchored" data-anchor-id="the-instance">The instance</h3>
+<p>hgms62 has 48,597 columns and 582,237 rows, or 37,235 by 569,830 after presolve. Size is not the problem. It ranks 46th by file size, and rwth-timetable, ten times larger, certified in 10 seconds. Its half-size sibling, hgms30, is telling. It was the second-slowest certified instance, taking 3,869 epochs and 1,190 seconds. The hgms family is hard for Jaddle because of its structure, and hgms62 is about twice the size of hgms30.</p>
+<p>The family has a history in Jaddle’s development. On hgms30, an earlier version locked into a single restart cycle for more than 1,250 epochs, with the objective stuck 7% off optimal. That led to the artificial restart rule in the current solver, which forces a restart when a cycle runs too long without progress.</p>
+</section>
+<section id="how-close-it-got" class="level3">
+<h3 class="anchored" data-anchor-id="how-close-it-got">How close it got</h3>
+<p>When the clock ran out, the postsolved point had these residuals on the original LP:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Residual</th>
+<th>Value at 3,600 s</th>
+<th>Tolerance</th>
+<th>Ratio to tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Primal feasibility</td>
+<td>9.3e-5</td>
+<td>1e-4</td>
+<td>0.9 (met)</td>
+</tr>
+<tr class="even">
+<td>Dual feasibility</td>
+<td>2.1e-4</td>
+<td>1e-4</td>
+<td>2.1</td>
+</tr>
+<tr class="odd">
+<td>Duality gap</td>
+<td>3.9e-4</td>
+<td>1e-4</td>
+<td>3.9</td>
+</tr>
+</tbody>
+</table>
+<p>The primal was feasible to tolerance. The dual feasibility and the gap were the problem: still converging, but slowly. A 600-second run of an earlier build had left them at 1.7e-2 and 8.5e-2, so the solver was making steady progress, not stalling. It just needed more time than the limit allowed.</p>
+</section>
+<section id="the-fix-widen-the-diagonal-clamp" class="level3">
+<h3 class="anchored" data-anchor-id="the-fix-widen-the-diagonal-clamp">The fix: widen the diagonal clamp</h3>
+<p>The default that matters here is <code>diag_clamp</code>. Jaddle starts from Ruiz and Pock–Chambolle scaling, then adapts a per-coordinate diagonal metric at each restart. Coordinates that drift steadily get larger steps, and coordinates that oscillate get smaller ones. This adaptive scaling is on by default, because it cut the shifted geometric mean solve time on this benchmark by about 18%.</p>
+<p><code>diag_clamp</code> limits how far that adaptation can move each coordinate from the baseline scaling. The default of 10 keeps every scale factor in [1/10, 10]. That is a safe bound across the whole benchmark, but on hgms62 it is too tight. The likely reason is that some coordinates need more rescaling than a factor of 10 allows, so the clamp holds them back.</p>
+<p>Raising <code>diag_clamp</code> greatly lets the adaptive metric correct the scaling fully, and hgms62 then converges. Nothing else changes: the same presolve, tolerance and time limit.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> jaddle.jaddle_linear <span class="im">as</span> jl</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> jl.solve_with_presolve(</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"hgms62.mps"</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    eliminate_defined_vars<span class="op">=</span><span class="va">True</span>,  <span class="co"># as in the benchmark</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    primal_feasibility_tolerance<span class="op">=</span><span class="fl">1e-4</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    dual_feasibility_tolerance<span class="op">=</span><span class="fl">1e-4</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    dual_gap_tolerance<span class="op">=</span><span class="fl">1e-4</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    diag_clamp<span class="op">=</span><span class="fl">1e8</span>,  <span class="co"># default 10.0</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>With this setting, hgms62 converges in 73.65 seconds.</p>
+</section>
+<section id="why-the-default-stays-at-10" class="level3">
+<h3 class="anchored" data-anchor-id="why-the-default-stays-at-10">Why the default stays at 10</h3>
+<p>A wider clamp is not a free win. The adaptive metric changes the geometry the solver works in, and a loose bound gives it more room to go wrong on other instances. Jaddle’s primal weight shows the same risk: with a wide k_scale clamp and per-epoch updates it ran away on mzzv11, reaching 1e8 with the gap stuck at 0.94. The default is set for the whole benchmark, not for its hardest member.</p>
+<p>This is the pattern for a first-order solver: one robust default that handles 382 of 383 instances, and a small set of documented settings for the rare instance that needs more. When a solve stalls, <code>diag_clamp</code> is a good first setting to try. Turning adaptive scaling off with <code>diag_adapt=False</code> is another.</p>
+</section>
+</section>
+<section id="caveats-and-reproducing-the-run" class="level2">
+<h2 class="anchored" data-anchor-id="caveats-and-reproducing-the-run">Caveats and reproducing the run</h2>
+<p>Three points matter when reading these numbers.</p>
+<ul>
+<li><strong>The certificate is on the presolved LP.</strong> After HiGHS postsolve, 297 of the 383 points also pass the 1e-4 certificate on the original LP. Postsolve can enlarge a first-order solution’s small dual errors. Presolve can also rescale a problem a lot, which changes what a relative tolerance means. On leo1, presolve folds a row with 1e7 coefficients into the cost, so the objective is right but the original dual test fails. When the original certificate matters, polishing, iterative refinement or crossover can tighten the postsolved point.</li>
+<li><strong>The time limit matters for the hardest few.</strong> With a 600-second limit, earlier runs certified 380 of 383. hgms30 and fhnw-binschedule1 need 20 to 26 minutes.</li>
+<li><strong>GPU runs are not bit-for-bit repeatable.</strong> The order of scatter-add operations varies, so identical runs can differ by several epochs.</li>
+</ul>
+<p>The MPS files are not shipped with Jaddle. Download the 383 instances from the <a href="https://miplib.zib.de/">MIPLIB 2017 site</a> into <code>data/</code>, then run from the repository root:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> benchmarks/benchmark.py <span class="at">--tol</span> 1e-4 <span class="at">--max-seconds</span> 3600 <span class="at">--highs-solver</span> none</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>--highs-solver none</code> skips the HiGHS reference solve, which can take longer than Jaddle’s. Add <code>--diag-clamp 1e8</code> to rerun hgms62 with the wider clamp. The harness and its options are documented in <a href="https://github.com/BrendanVR/Jaddle/blob/main/benchmarks/README.md"><code>benchmarks/README.md</code></a>.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/brendanvr\.github\.io\/jaddle-blog");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>Jaddle: Saddle up with JAX</p>
+</div>   
+    <div class="nav-footer-center">
+<p>© Brendan van Rooyen</p>
+</div>
+    <div class="nav-footer-right">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/BrendanVR/Jaddle">
+      <i class="bi bi-github" role="img">
+</i> 
+    </a>
+  </li>  
+    <li class="nav-item compact">
+    <a class="nav-link" href="https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3">
+      <i class="bi bi-linkedin" role="img">
+</i> 
+    </a>
+  </li>  
+</ul>
+    </div>
+  </div>
+</footer>
+
+
+
+
+<script src="../../site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

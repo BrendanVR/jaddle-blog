@@ -1,0 +1,75 @@
+---
+title: "A Gentle Tour of Saddle Point Solvers"
+subtitle: "How two stubborn players, each learning from the other, end up somewhere useful"
+description: "An intuitive introduction to saddle point solvers: turning constraints into a two-player game, finding a Nash equilibrium, and why long-running averages can settle even when individual updates wobble."
+author: "Brendan van Rooyen"
+image: saddle-point-solvers-logo.svg
+date: 2026-10-21
+categories: [jaddle, optimisation, machine learning]
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
+---
+
+Many of the hardest problems in machine learning and engineering are optimisation problems. Sometimes there's a catch: you want the cheapest design, but it must satisfy certain rules. Saddle point solvers are one of the most elegant ways to handle that catch, and the path to understanding them is a story about turning rules into a game.
+
+## Step 1: Turn the rules into a fight
+
+Suppose you want to minimise a cost, but you must obey a rule. A classic trick is to add a *penalty* for breaking the rule and let a second player decide how big that penalty should be.
+
+Call the first player X, who is trying to make the cost as small as possible. Call the second player Y, who is trying to make the penalty as large as possible whenever the rule is broken. Y is a bit of a troublemaker. If X breaks a rule, Y pounces and charges X for it.
+
+Mathematicians call this *dualising* the constraints. A problem that said, "minimise the cost, subject to the rules" becomes "X minimises, while Y maximises, a combined score." The problem has gone from a minimisation to a **min-max**.
+
+## Step 2: Meet the two-player game
+
+What we've built is a two-player zero-sum game. One player's gain is exactly the other's loss. X wants the score low, Y wants it high, and neither can simply walk away.
+
+Picture a tug-of-war on a seesaw. Every move X makes pushes the score up or down, and every move Y makes pushes it back. Neither player is trying to be nice.
+
+## Step 3: The sweet spot is a Nash equilibrium
+
+In game theory, a *Nash equilibrium* is a situation where neither player can improve their outcome by changing their move alone. Each player is doing the best they can, given what the other is doing.
+
+In our min-max game, this equilibrium has a lovely geometric name: a **saddle point**. Think of a horse's saddle. Walk along it from front to back and you're climbing up; walk side to side and you're going down. The saddle point is the spot that is the lowest in one direction and the highest in the other at the same time.
+
+That is exactly the answer to our original problem. The saddle point gives us the best design that also obeys the rules.
+
+## Step 4: Let the players learn from each other
+
+How do we actually find the saddle point? One approach is to let both players learn as they play. Each player watches what the other has been doing and adjusts their strategy accordingly.
+
+The simplest version is called *gradient descent-ascent*. X takes a small step downhill on the score, Y takes a small step uphill, and both repeat. It is like two hikers feeling their way across a foggy landscape, one trying to get lower and the other trying to get higher, each reacting to where the other has just stepped.
+
+## Step 5: The twist (and the magic)
+
+Here is the honest bit. In general, these learning dynamics **don't converge**. In some games, the players chase each other in circles, or their steps grow larger and the game spirals away from the answer. Two stubborn players reacting instantly to each other are a recipe for wobbling.
+
+But then something rather magical happens. If you stop looking at each individual move and instead track the **long-running average** of what each player has done, the averages settle down. The wobbles cancel out, and the averaged strategies drift steadily towards the saddle point, the Nash equilibrium, the answer we were looking for.
+
+## Why it matters
+
+Saddle point problems appear everywhere: training generative adversarial networks, robust control under uncertainty, fair resource allocation, and constrained learning in general. The core lesson is delightfully simple. When two opposing learners keep playing, don't trust any single moment. Trust the average over time.
+
+## From Idea to Engine: Jaddle
+
+Everything above is a story about ideas: turn the rules into a fight, find the calm point where neither player wants to move, let both learners adapt, and trust the long-run average. Turning those ideas into code that actually runs fast is what **Jaddle** is for.
+
+Jaddle (short for *JAX Saddle Point Solver*) is a library built on [**JAX**](https://github.com/jax-ml/jax), Google's numerical computing library. It takes the two-player picture seriously. You describe the game, one player minimising and one maximising, and Jaddle runs the learning dynamics for you.
+
+Here's how the story maps onto the library:
+
+- **Dualising the constraints** becomes a function you write: the cost, plus the penalised constraints, as one combined score.
+- **The two-player game** is the object Jaddle solves. Each player's update is computed from the gradient of that shared score, so you never hand-derive the learning rules.
+- **The Nash equilibrium** is the output you care about: the saddle point, the pair of strategies where neither player gains by moving alone.
+- **Learning from the other player** is the iterative update loop, with both players stepping at once and reacting to each other.
+- **The long-running average** is where the magic from the last section lives in practice.
+
+JAX makes this practical. Automatic differentiation supplies the gradients, jit compiles the update step so it runs at speed, and vmap lets many problems run side by side. The same code runs on CPU, GPU, or TPU without rewriting.
+
+So if the earlier sections gave you the intuition, Jaddle is the workshop where you put it to use. Try it on a small game first, watch the iterates wobble, then watch the averages settle. That moment is worth seeing for yourself.

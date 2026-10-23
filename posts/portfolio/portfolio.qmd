@@ -6,6 +6,14 @@ author: "Brendan van Rooyen"
 image: portfolio-logo.png
 date: 2026-10-21
 categories: [jaddle, optimisation, cone programming, finance]
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    smooth-scroll: true
+execute:
+  echo: false
 ---
 
 Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?
