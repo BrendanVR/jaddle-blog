@@ -19,8 +19,8 @@ website:
       - icon: linkedin
         href: https://www.linkedin.com/in/brendan-van-rooyen-28a0251b3
   page-footer:
-    left: "Jaddle: saddle up with JAX"
-    center: "© Brendan Van Rooyen"
+    left: "Jaddle: Saddle up with JAX"
+    center: "© Brendan van Rooyen"
     right:
       - icon: github
         href: https://github.com/BrendanVR/Jaddle
