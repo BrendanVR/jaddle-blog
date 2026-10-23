@@ -126,67 +126,200 @@
     "text": "Cheat sheet\n\n\n\n\n\n\n\n\nSymbol\nName\nWhat it means\n\n\n\n\n\\(x\\)\nprimal variables\nthe shopper’s choices\n\n\n\\(y\\)\ndual variables\nthe referee’s fines, one per rule\n\n\n\\(L(x, y)\\)\nLagrangian\nthe total bill: cost plus fines\n\n\n\\(\\tau,\\ \\sigma\\)\nstep sizes\nhow far the shopper / referee move per turn\n\n\n\\(\\bar z\\)\naverage\nthe weighted average of everywhere they’ve been\n\n\n\\(\\eta\\)\nbase step\nthe whole group’s pace, learned as it goes\n\n\n\\(\\bar\\eta\\)\nsafe step\nthe largest step that won’t make them overreact\n\n\n\\(k\\)\nprimal weight\nshares the pace between shopper and referee\n\n\n\\(t_j,\\ s_i\\)\ndiagonal\neach number’s personal stride\n\n\n\\(\\rho_j\\)\ndrift ratio\nnet distance ÷ total wiggle\n\n\n\\(m\\)\nwrongness score\nthe largest of: broken rules, unfair fines, gap"
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html",
-    "href": "posts/mpc-fleet/mpc-fleet.html",
-    "title": "Herding a Thousand Springy Robots",
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html",
+    "title": "Teaching a Robot Banker to Play Fair",
     "section": "",
-    "text": "Imagine four blocks sitting in a row on a slippery table, joined to each other by springs, with the two end blocks also attached by springs to walls. Give one a poke and the whole chain starts jiggling back and forth. Now add three little motors, one between each neighbouring pair of blocks, that can push them apart or pull them together. And just to make life interesting, every so often a random shove knocks the blocks around.\nYour job is to keep the chain calm, and keep every block within a safe zone around its resting spot.\nNow imagine doing that for a thousand chains at once."
+    "text": "Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say “yes” or “no”. To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: learn to do what they did.\nThat sounds sensible. But there is a catch. What if the old decisions were unfair?"
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "The jiggling-blocks system",
-    "text": "The jiggling-blocks system\nThis setup comes from a well-known 2010 research paper by Yang Wang and Stephen Boyd, and it’s become a standard test for control methods. The rules are:\n\nEach motor has a strength limit. It can only push or pull so hard.\nEach block should stay within a safe zone around its resting position.\nWe want the blocks to settle down without the motors working harder than necessary."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "A world with a thumb on the scale",
+    "text": "A world with a thumb on the scale\nIn this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we’ll call Group A and Group B. About three in ten applicants belong to Group B.\nEvery applicant has a few “skill” scores, things like income stability or repayment history. Here is the important part: the skills are spread out in exactly the same way in both groups. Nobody in Group B is any less capable, on average, than anyone in Group A.\nIn a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.\nSo the pile of old decisions, the one we’re asking the computer to learn from, quietly contains a bias."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
-    "href": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Thinking ahead: model predictive control",
-    "text": "Thinking ahead: model predictive control\nHow do you decide what the motors should do? One of the most powerful approaches is called model predictive control, or MPC.\nMPC works a lot like a good chess player:\n\nLook at the board. Measure where every block is and how fast it’s moving.\nThink several moves ahead. Using a model of how springs and blocks behave, plan the best sequence of motor pushes for the next 15 steps (about seven and a half seconds).\nMake only the first move. Apply the first push in the plan.\nLook again and re-plan. The world never goes exactly as predicted (those random shoves!), so throw the old plan away and make a fresh one from the new position.\n\nThis loop of plan, act, re-plan makes MPC both clever and adaptable. It’s used in self-driving cars, chemical plants, robots, drones and even some heating systems.\nEach plan is a small optimisation puzzle called a quadratic program, with 105 numbers to choose and 120 rules to obey."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "“Just don’t tell it the group!”",
+    "text": "“Just don’t tell it the group!”\nThe first idea most people have is simple: don’t show the computer which group each applicant is in. If it can’t see the group, surely it can’t discriminate?\nSadly, it isn’t that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call proxies: clues that let you guess the group without being told.\nA computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of “postcode” were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a negative weight on those postcode-like features and approves Group B applicants far less often than Group A.\n\n\n\n\n\n\nNoteThe lesson\n\n\n\nHiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
-    "href": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Soft walls instead of hard ones",
-    "text": "Soft walls instead of hard ones\nThere’s a subtle problem. Sometimes a random shove knocks a block so hard that no plan, however clever, can keep it inside its safe zone. If the rules said “the block must stay inside, no exceptions”, the puzzle would have no solution and the controller would be stuck.\nSo the safe zones are made soft. A block is allowed to stray outside, but the plan pays a hefty fine for every bit it goes over. The fine is large enough that whenever staying inside is possible, the plan does exactly that. It’s only when there’s no other choice that a block is allowed to go a little over, and even then the plan does its best to bring it back.\nThe motor limits, on the other hand, stay hard. A motor physically can’t push harder than its maximum, so the plan is never allowed to ask it to."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "How the robot banker thinks",
+    "text": "How the robot banker thinks\nThe model we use is called logistic regression, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:\n\nEach feature (each skill score, each postcode detail) earns or loses the applicant some points.\nThe points are added up into a single score.\nIf the score is above zero, the answer is “yes”. Below zero, “no”.\n\n“Learning” just means adjusting how many points each feature is worth until the model’s answers match the training data as closely as possible. Finding the best point values is an optimisation problem: a search for the settings that make some measure of error as small as it can be."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
-    "href": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "One at a time versus all together",
-    "text": "One at a time versus all together\nA single one of these puzzles is tiny. A good solver running on an ordinary computer processor (CPU) can crack one in well under a thousandth of a second. That’s very hard to beat.\nBut we don’t have one system. We have a thousand, each starting from its own random position and getting its own random shoves. At every step, we need a thousand fresh plans.\nHere’s where the two approaches differ:\n\nThe one-at-a-time approach solves the thousand puzzles one after another, using a well-known solver called SCS. It’s a bit like a single brilliant runner delivering a thousand letters, one trip at a time.\nThe all-together approach uses Jaddle on a graphics card (GPU). All thousand chains have the same springs, motors and rules; only their positions differ. So Jaddle solves all thousand puzzles side by side, in lockstep, like a marching band where every musician takes the same step at the same time.\n\nBoth approaches use a warm start: each new plan begins from the previous step’s plan, shifted forward by one step. Since the world hasn’t changed much in half a second, the old plan is usually a great starting guess."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "Adding a fairness rule",
+    "text": "Adding a fairness rule\nTo push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is demographic parity: both groups should be approved at the same rate.\nThere is a small snag. Approval rates jump in steps: one applicant flips from “no” to “yes” and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:\n\nThe model’s average score shouldn’t depend on which group you’re in.\n\nWe also add a dial, which we’ll call the fairness bound. Turn the dial all the way up and there’s no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
-    "href": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "And the winner is…",
-    "text": "And the winner is…\nIt depends on how many systems you have, which is the most interesting part of the whole example.\n\nOne system: the one-at-a-time solver wins. A single tiny puzzle leaves a GPU almost entirely idle; it spends most of its time just getting started.\nTens of systems: the batched approach catches up.\nA thousand systems: the batched approach on a laptop GPU spends about one-fortieth as long per puzzle as the one-at-a-time solver, and its plans are slightly more accurate too. Even running the batched approach on an ordinary CPU, it’s about three times faster than looping.\nTen thousand systems: something new happens…"
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "What we found",
+    "text": "What we found\nWe trained two models: one with no fairness rule, and one with the dial at zero.\nThe fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:\n\nMeasured against the biased historical decisions, the fair model looks worse. Of course it does: it is refusing to copy the bias.\nMeasured against the fair decisions (the ones that depend only on skill), the fair model looks better.\n\nIn real life we would never get to see those “fair decisions”. We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then “accuracy against the past” can be a misleading report card."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "The slowest member of the band",
-    "text": "The slowest member of the band\nRemember the marching band? The band only finishes when its slowest member finishes. In a fleet of ten thousand, there are always a few chains in a tricky spot, perhaps just shoved past the edge of their safe zone, and their puzzles take longer to solve. Everyone else ends up waiting for them.\nThe fix is something every real controller needs anyway: a deadline. We give the solver a fixed amount of effort per step. Any system that hasn’t fully finished by then simply uses the best plan it has so far. Because Jaddle always keeps its answers within the motor limits as it works, even an unfinished plan never asks a motor to do the impossible.\nWith a deadline in place, the time per puzzle for ten thousand systems drops back down near its best."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "The whole trade-off in one go",
+    "text": "The whole trade-off in one go\nOne fair model and one unfair model only tell part of the story. What about all the settings in between?\nWe picked 40 different positions for the fairness dial and asked Jaddle, the optimisation library this example is built with, to train all 40 models at the same time, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.\nReading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
-    "href": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
-    "title": "Herding a Thousand Springy Robots",
-    "section": "Do they agree?",
-    "text": "Do they agree?\nSpeed is no use if the answers are wrong. So we check both approaches against a reference answer solved to extremely high accuracy. Both are close, and over the whole run, the two fleets end up with nearly identical total costs. The blocks stay calm, the motors stay within their limits, and the chains settle down in both cases."
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "The price of fairness",
+    "text": "The price of fairness\nHere is my favourite part. When an optimiser obeys a rule, it can also tell you how much that rule is costing. Mathematicians call this a dual variable or shadow price. Think of it as a receipt that comes with each answer, saying: “if you tightened this rule by one more notch, the training error would go up by this much.”\nFor our fairness rule, that receipt is a price of fairness. We found that:\n\nWhen the dial is loose enough that the rule isn’t actually stopping anything, the price is zero. The rule is just along for the ride.\nAs the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.\n\nThat’s useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is “worth it”, you can see the actual exchange rate and talk about it openly."
   },
   {
-    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
-    "href": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
-    "title": "Herding a Thousand Springy Robots",
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
+    "title": "Teaching a Robot Banker to Play Fair",
+    "section": "A few footnotes",
+    "text": "A few footnotes\nFairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.\n\nDemographic parity is only one definition of fairness. Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.\nOur world is made up. Real data is messier, and real bias is rarely a single fixed penalty.\nThe rule we used is a stand-in. Making average scores equal tends to bring approval rates together, but it doesn’t guarantee they match exactly."
+  },
+  {
+    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
+    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
+    "title": "Teaching a Robot Banker to Play Fair",
     "section": "The takeaway",
-    "text": "The takeaway\nThis example isn’t saying “always use a GPU”. If you’re controlling one robot and need an answer within a strict fraction of a millisecond, a traditional CPU solver is still the right tool.\nBut a surprising number of real problems involve lots of similar decisions at once: a fleet of delivery robots, a wind farm full of turbines, or testing one controller against thousands of possible futures to see how it copes. In those cases, it’s worth asking the marching-band question: could all of these take the same step together? When the answer is yes, solving them side by side can be dramatically faster than solving them one at a time."
+    "text": "The takeaway\nA model trained to imitate the past will happily imitate the past’s mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html",
+    "href": "posts/robust-kalman/robust-kalman.html",
+    "title": "Ignoring the Fibbers",
+    "section": "",
+    "text": "Imagine you’re trying to follow a remote-controlled boat drifting around a pond, but you can’t see it directly. Instead, a friend on the bank shouts out its position every few seconds. Most of the time they’re pretty accurate, give or take a little. But your friend is easily distracted, and about one time in five they shout out something completely off, as if they’d glanced at a duck instead.\nCan you still work out where the boat actually went?"
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
+    "href": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
+    "title": "Ignoring the Fibbers",
+    "section": "Two sources of information",
+    "text": "Two sources of information\nYou have two things to go on:\n\nThe measurements, your friend’s shouted positions. Most are close; some are wild.\nThe physics. Boats don’t teleport. They glide along, speeding up and slowing down smoothly, nudged now and then by gusts of wind you can’t predict.\n\nThe trick is to combine them. You’re looking for a path that obeys the physics and stays reasonably close to the measurements. If a measurement says the boat jumped five metres to the left in an instant, the physics says “that’s not possible”, and the path should mostly ignore it.\nFinding the best such path, after the fact, using all the measurements at once, is called smoothing."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
+    "href": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
+    "title": "Ignoring the Fibbers",
+    "section": "The classic recipe: the Kalman smoother",
+    "text": "The classic recipe: the Kalman smoother\nIn the 1960s, Rudolf Kalman developed a beautifully efficient method for exactly this kind of problem. Versions of his ideas helped steer the Apollo spacecraft to the Moon, and today they run inside phones, cars, drones and countless other gadgets.\nThe classic approach chooses the path that keeps two things small at once:\n\nthe wind gusts needed to explain the path (smaller gusts mean a more natural path), and\nthe misses, the gaps between the path and each measurement.\n\nTo combine all the misses into one number, it squares each one and adds them up. Squaring makes sense when errors are small and well-behaved: it treats misses in either direction equally and is very convenient mathematically."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
+    "href": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
+    "title": "Ignoring the Fibbers",
+    "section": "The problem with squaring",
+    "text": "The problem with squaring\nSquaring has a weakness. A miss that’s twice as big counts four times as much. A miss that’s twenty times as big counts four hundred times as much.\nIn our example, the occasional wild measurement is about twenty times noisier than a normal one. So when the classic smoother tries to keep the squared misses small, those few wild measurements dominate everything. They act like bullies, dragging the estimated path towards themselves, because ignoring them would be “too expensive”.\nIt’s a bit like a teacher averaging test scores where one student’s answer of “a million” for a question with answer “seven” drags the class average into the stratosphere."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
+    "href": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
+    "title": "Ignoring the Fibbers",
+    "section": "A fairer referee: the Huber penalty",
+    "text": "A fairer referee: the Huber penalty\nThe fix is to change how misses are scored. Instead of squaring every miss, we use the Huber penalty, named after the statistician Peter Huber:\n\nFor small misses, it behaves just like squaring. Normal, everyday noise is treated exactly as before.\nFor big misses, it switches to growing in a straight line. A miss twice as big costs only about twice as much, not four times.\n\n\n\n\n\n\n\nTipA helpful way to picture it\n\n\n\nThe squared penalty is like a rubber band that pulls harder and harder the further you stretch it. The Huber penalty is a rubber band that, beyond a certain point, stops getting stronger and just pulls with a steady force. Wild measurements still tug on the path, but they can no longer yank it off course.\n\n\nThis version is called the robust Kalman smoother. “Robust”, in statistics, means “doesn’t fall apart when some of the data is bad”."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-experiment",
+    "href": "posts/robust-kalman/robust-kalman.html#the-experiment",
+    "title": "Ignoring the Fibbers",
+    "section": "The experiment",
+    "text": "The experiment\nWe simulate an object moving around a flat plane for 50 seconds, measured 1,000 times. It has a position and a speed, a little friction slowing it down, and random pushes knocking it around. Each measurement has a one-in-five chance of being an outlier.\nThen we estimate the path twice: once with the classic smoother and once with the robust one.\nThe results are striking. The classic smoother’s path is visibly dragged around by the outliers, wandering off towards the wild measurements. The robust smoother’s path sticks closely to the true trajectory, as if it had simply noticed which shouts to take with a pinch of salt."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
+    "href": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
+    "title": "Ignoring the Fibbers",
+    "section": "What Jaddle does differently",
+    "text": "What Jaddle does differently\nBoth versions of the problem are written in CVXPY, a popular language for describing optimisation problems. In fact, this is one of CVXPY’s own showcase examples.\nThe classic smoother is a relatively simple kind of problem (a quadratic program), and Jaddle solves it directly.\nThe robust version is more interesting. Normally CVXPY would translate the Huber penalty into a bundle of cone-shaped rules, which works but makes the problem bigger and more complicated. Jaddle takes a different route: it keeps the Huber penalty as the smooth, gently curving function it really is, and solves the problem in that form. It also notices that the “miss” for each measurement is completely determined by the path, so it can drop those as separate unknowns and work with the path alone. Fewer moving parts, same answer.\nWe check both of Jaddle’s answers against Clarabel, a well-established solver that comes with CVXPY, and they agree."
+  },
+  {
+    "objectID": "posts/robust-kalman/robust-kalman.html#the-takeaway",
+    "href": "posts/robust-kalman/robust-kalman.html#the-takeaway",
+    "title": "Ignoring the Fibbers",
+    "section": "The takeaway",
+    "text": "The takeaway\nReal-world data is rarely perfectly behaved. Sensors glitch, signals bounce, people mishear. A method that assumes every measurement is roughly right can be thrown badly off course by a handful that aren’t.\nBy changing one small thing, how we score big misses, the robust Kalman smoother learns to listen to the crowd without being bullied by the loudest fibbers. It’s a good lesson beyond boats and ponds: when you’re combining lots of evidence, make sure no single piece gets to shout over all the rest."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html",
+    "href": "posts/portfolio/portfolio.html",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "",
+    "text": "Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?\nIf you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that’s like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.\nThis example explores that trade-off."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#the-rules-of-the-game",
+    "href": "posts/portfolio/portfolio.html#the-rules-of-the-game",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "The rules of the game",
+    "text": "The rules of the game\nWe need to decide what fraction of our money goes into each of the 500 assets. The rules are:\n\nThe fractions must add up to 100%. We invest all the money, no more and no less.\nNo fraction can be negative. In finance-speak, the portfolio is long-only: we can’t bet against an asset or borrow to invest.\nThe portfolio’s volatility (how much it’s expected to wobble) must stay below a limit we choose.\n\nWithin those rules, we want the highest expected return."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
+    "href": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Two kinds of wobble",
+    "text": "Two kinds of wobble\nTo measure wobble, we use what’s called a factor model. It says each asset’s ups and downs come from two sources.\nShared wobble. Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or factors, and each asset reacts to them in its own way.\nPersonal wobble. Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.\nThis distinction matters because the two kinds of wobble behave differently when you combine assets:\n\nPersonal wobbles tend to cancel out. If you own lots of different things, one asset’s bad day is often balanced by another’s good day. This is the magic of diversification.\nShared wobbles don’t cancel. If all your assets love sunny weather, owning more of them doesn’t protect you from rain."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
+    "href": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Where the ice-cream cone comes in",
+    "text": "Where the ice-cream cone comes in\nTo work out a portfolio’s total wobble, you collect all its exposures, to each shared factor and to each asset’s personal risk, and measure their combined size, the way you’d measure the length of an arrow from its parts.\nThe rule “this combined size must be below the limit” has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you’d get a shape like a cone. It even has a nickname among optimisation folk: the ice-cream cone. Its formal name is the second-order cone.\nWhy does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like “this plus that must be at most ten”. A cone has a curved, rounded surface, so those solvers can’t take it directly. Jaddle can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it’s wandered out."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
+    "href": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Tracing the efficient frontier",
+    "text": "Tracing the efficient frontier\nRather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.\nIf you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the efficient frontier. Every point on it is a portfolio where you can’t get more expected return without accepting more risk. Any portfolio below the curve is leaving money on the table.\nTwo things make tracing this curve quicker:\n\nWarm starts. Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn’t change the best portfolio completely, so starting nearby saves a lot of work.\nReusing the setup. The problem is described once, and only the wobble limit changes between solves."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
+    "href": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "The slope tells a story",
+    "text": "The slope tells a story\nEvery time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: “If I allowed a little more wobble, how much extra return would I get?”\nThat’s precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you’re being very cautious, accepting a bit more risk buys you a healthy boost in return. When you’re already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
+    "href": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "What the portfolios look like",
+    "text": "What the portfolios look like\nAt the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.\nAs the limit loosens, the portfolio concentrates on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#checking-our-work",
+    "href": "posts/portfolio/portfolio.html#checking-our-work",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "Checking our work",
+    "text": "Checking our work\nTo make sure Jaddle’s answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves."
+  },
+  {
+    "objectID": "posts/portfolio/portfolio.html#the-takeaway",
+    "href": "posts/portfolio/portfolio.html#the-takeaway",
+    "title": "How Much Wobble Can You Handle?",
+    "section": "The takeaway",
+    "text": "The takeaway\nInvesting well isn’t just about picking winners. It’s about understanding how your choices wobble together. By describing risk as the size of an arrow, and using a solver that’s comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Jaddle",
+    "section": "",
+    "text": "Jaddle: Saddle up with JAX\n\n\nGitHub LinkedIn\n\n\n\n\n\n\n\n   \n    \n    \n      Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\nJaddle on the hard MIPLIB LP benchmark: 382 of 383\n\n\nJaddle’s performance on MIPLIB LP Relaxations\n\n\n\njaddle\n\noptimisation\n\nlinear programming\n\nbenchmarks\n\n\n\nA look at Jaddle on hard LPs\n\n\n\n\n\nOct 23, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHow Jaddle Works\n\n\nA shopper, a referee, a horse saddle and a few clever tricks\n\n\n\njaddle\n\noptimisation\n\nduality\n\nalgorithms\n\n\n\nAn explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.\n\n\n\n\n\nOct 22, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHow Much Wobble Can You Handle?\n\n\nBuilding a risk-limited investment portfolio, one ice-cream cone at a time\n\n\n\njaddle\n\noptimisation\n\ncone programming\n\nfinance\n\n\n\nA friendly look at portfolio optimisation: shared risk, personal risk, the efficient frontier, and why the shape of a cone matters.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nThe Goldilocks Battery\n\n\nNot too big, not too small: using gradient descent to size a home battery\n\n\n\njaddle\n\noptimisation\n\nlinear programming\n\nenergy\n\n\n\nHow to choose the right battery for a solar-powered site by solving many small daily plans at once and letting them tell you which way to grow.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nIgnoring the Fibbers\n\n\nHow a robust Kalman smoother keeps track of a moving object when some measurements are wildly wrong\n\n\n\njaddle\n\noptimisation\n\nestimation\n\nrobust statistics\n\n\n\nA gentle introduction to Kalman smoothing, why a few bad measurements can wreck it, and how the Huber penalty puts outliers in their place.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHerding a Thousand Springy Robots\n\n\nModel predictive control for a whole fleet at once, and why a GPU is like a marching band\n\n\n\njaddle\n\noptimisation\n\ncontrol\n\nGPU\n\n\n\nAn introduction to model predictive control, and how solving a thousand small planning problems in lockstep on a GPU beats solving them one at a time.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nTeaching a Robot Banker to Play Fair\n\n\nWhat happens when a computer learns from a biased past, and how a single rule can nudge it back\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\nfairness\n\n\n\nA friendly tour of fairness-constrained logistic regression: why hiding the sensitive attribute isn’t enough, and how to measure the price of fairness.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nMax-Cut: The Art of Splitting a Room\n\n\nHow pretending a hard puzzle is easier gives you a near-perfect answer, and a promise about how good it is\n\n\n\njaddle\n\noptimisation\n\nsemidefinite programming\n\ngraphs\n\n\n\nA gentle introduction to the Max-Cut problem and the Goemans–Williamson trick: relax, solve, then slice with a random sheet.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nA Gentle Tour of Saddle Point Solvers\n\n\nHow two stubborn players, each learning from the other, end up somewhere useful\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\n\n\nAn intuitive introduction to saddle point solvers: turning constraints into a two-player game, finding a Nash equilibrium, and why long-running averages can settle even when individual updates wobble.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nSmall Problems? Use Clarabel. Big Problems? Use Jaddle.\n\n\nCareful steps versus cheap steps, and how problem size decides the winner\n\n\n\njaddle\n\noptimisation\n\nClarabel\n\nGPU\n\n\n\nA guide to choosing between a careful, high-accuracy solver like Clarabel and a cheap-step GPU solver like Jaddle, based on problem size and how many problems you need to solve.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "posts/battery-sizing/battery-sizing.html",
@@ -259,200 +392,116 @@
     "text": "The takeaway\nBig decisions often depend on lots of small ones. Here, a one-off purchase depends on thousands of hour-by-hour choices across many different days. By solving all the small problems together, and using the slopes they give away for free, we can steer the big decision step by step until it’s just right. Not too big, not too small."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Jaddle",
+    "objectID": "posts/mpc-fleet/mpc-fleet.html",
+    "href": "posts/mpc-fleet/mpc-fleet.html",
+    "title": "Herding a Thousand Springy Robots",
     "section": "",
-    "text": "Jaddle: Saddle up with JAX\n\n\nGitHub LinkedIn\n\n\n\n\n\n\n\n   \n    \n    \n      Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\nHow Jaddle Works\n\n\nA shopper, a referee, a horse saddle and a few clever tricks\n\n\nAn explanation of how Jaddle solves optimisation problems using duality and the Lagrangian.\n\n\n\n\n\nOct 22, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHow Much Wobble Can You Handle?\n\n\nBuilding a risk-limited investment portfolio, one ice-cream cone at a time\n\n\n\njaddle\n\noptimisation\n\ncone programming\n\nfinance\n\n\n\nA friendly look at portfolio optimisation: shared risk, personal risk, the efficient frontier, and why the shape of a cone matters.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nThe Goldilocks Battery\n\n\nNot too big, not too small: using gradient descent to size a home battery\n\n\n\njaddle\n\noptimisation\n\nlinear programming\n\nenergy\n\n\n\nHow to choose the right battery for a solar-powered site by solving many small daily plans at once and letting them tell you which way to grow.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nIgnoring the Fibbers\n\n\nHow a robust Kalman smoother keeps track of a moving object when some measurements are wildly wrong\n\n\n\njaddle\n\noptimisation\n\nestimation\n\nrobust statistics\n\n\n\nA gentle introduction to Kalman smoothing, why a few bad measurements can wreck it, and how the Huber penalty puts outliers in their place.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nHerding a Thousand Springy Robots\n\n\nModel predictive control for a whole fleet at once, and why a GPU is like a marching band\n\n\n\njaddle\n\noptimisation\n\ncontrol\n\nGPU\n\n\n\nAn introduction to model predictive control, and how solving a thousand small planning problems in lockstep on a GPU beats solving them one at a time.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nTeaching a Robot Banker to Play Fair\n\n\nWhat happens when a computer learns from a biased past, and how a single rule can nudge it back\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\nfairness\n\n\n\nA friendly tour of fairness-constrained logistic regression: why hiding the sensitive attribute isn’t enough, and how to measure the price of fairness.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nMax-Cut: The Art of Splitting a Room\n\n\nHow pretending a hard puzzle is easier gives you a near-perfect answer, and a promise about how good it is\n\n\n\njaddle\n\noptimisation\n\nsemidefinite programming\n\ngraphs\n\n\n\nA gentle introduction to the Max-Cut problem and the Goemans–Williamson trick: relax, solve, then slice with a random sheet.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nA Gentle Tour of Saddle Point Solvers\n\n\nHow two stubborn players, each learning from the other, end up somewhere useful\n\n\n\njaddle\n\noptimisation\n\nmachine learning\n\n\n\nAn intuitive introduction to saddle point solvers: turning constraints into a two-player game, finding a Nash equilibrium, and why long-running averages can settle even when individual updates wobble.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\n\n\n\n\n\n\n\nSmall Problems? Use Clarabel. Big Problems? Use Jaddle.\n\n\nCareful steps versus cheap steps, and how problem size decides the winner\n\n\n\njaddle\n\noptimisation\n\nClarabel\n\nGPU\n\n\n\nA guide to choosing between a careful, high-accuracy solver like Clarabel and a cheap-step GPU solver like Jaddle, based on problem size and how many problems you need to solve.\n\n\n\n\n\nOct 21, 2026\n\n\nBrendan van Rooyen\n\n\n\n\n\nNo matching items"
+    "text": "Imagine four blocks sitting in a row on a slippery table, joined to each other by springs, with the two end blocks also attached by springs to walls. Give one a poke and the whole chain starts jiggling back and forth. Now add three little motors, one between each neighbouring pair of blocks, that can push them apart or pull them together. And just to make life interesting, every so often a random shove knocks the blocks around.\nYour job is to keep the chain calm, and keep every block within a safe zone around its resting spot.\nNow imagine doing that for a thousand chains at once."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html",
-    "href": "posts/portfolio/portfolio.html",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "",
-    "text": "Suppose someone hands you a pile of money and a list of 500 things you could invest it in. Some are expected to grow a lot. Some are expected to grow a little. All of them wobble up and down unpredictably. How do you decide what to buy?\nIf you only cared about growth, the answer would be easy: put everything into whatever is expected to grow fastest. But that’s like crossing a river by jumping onto the single biggest stepping stone: thrilling, until it wobbles. Most people would rather give up a little expected growth to sleep better at night.\nThis example explores that trade-off."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-jiggling-blocks-system",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "The jiggling-blocks system",
+    "text": "The jiggling-blocks system\nThis setup comes from a well-known 2010 research paper by Yang Wang and Stephen Boyd, and it’s become a standard test for control methods. The rules are:\n\nEach motor has a strength limit. It can only push or pull so hard.\nEach block should stay within a safe zone around its resting position.\nWe want the blocks to settle down without the motors working harder than necessary."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#the-rules-of-the-game",
-    "href": "posts/portfolio/portfolio.html#the-rules-of-the-game",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "The rules of the game",
-    "text": "The rules of the game\nWe need to decide what fraction of our money goes into each of the 500 assets. The rules are:\n\nThe fractions must add up to 100%. We invest all the money, no more and no less.\nNo fraction can be negative. In finance-speak, the portfolio is long-only: we can’t bet against an asset or borrow to invest.\nThe portfolio’s volatility (how much it’s expected to wobble) must stay below a limit we choose.\n\nWithin those rules, we want the highest expected return."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
+    "href": "posts/mpc-fleet/mpc-fleet.html#thinking-ahead-model-predictive-control",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Thinking ahead: model predictive control",
+    "text": "Thinking ahead: model predictive control\nHow do you decide what the motors should do? One of the most powerful approaches is called model predictive control, or MPC.\nMPC works a lot like a good chess player:\n\nLook at the board. Measure where every block is and how fast it’s moving.\nThink several moves ahead. Using a model of how springs and blocks behave, plan the best sequence of motor pushes for the next 15 steps (about seven and a half seconds).\nMake only the first move. Apply the first push in the plan.\nLook again and re-plan. The world never goes exactly as predicted (those random shoves!), so throw the old plan away and make a fresh one from the new position.\n\nThis loop of plan, act, re-plan makes MPC both clever and adaptable. It’s used in self-driving cars, chemical plants, robots, drones and even some heating systems.\nEach plan is a small optimisation puzzle called a quadratic program, with 105 numbers to choose and 120 rules to obey."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
-    "href": "posts/portfolio/portfolio.html#two-kinds-of-wobble",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Two kinds of wobble",
-    "text": "Two kinds of wobble\nTo measure wobble, we use what’s called a factor model. It says each asset’s ups and downs come from two sources.\nShared wobble. Some forces push lots of assets around at once. Think of an ice-cream shop and a sunscreen company: a heatwave is good for both, and a rainy summer is bad for both. In our example there are 50 of these shared forces, or factors, and each asset reacts to them in its own way.\nPersonal wobble. Every asset also has its own private surprises. A particular shop might get a rave review or a broken freezer. These are unrelated to everything else.\nThis distinction matters because the two kinds of wobble behave differently when you combine assets:\n\nPersonal wobbles tend to cancel out. If you own lots of different things, one asset’s bad day is often balanced by another’s good day. This is the magic of diversification.\nShared wobbles don’t cancel. If all your assets love sunny weather, owning more of them doesn’t protect you from rain."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
+    "href": "posts/mpc-fleet/mpc-fleet.html#soft-walls-instead-of-hard-ones",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Soft walls instead of hard ones",
+    "text": "Soft walls instead of hard ones\nThere’s a subtle problem. Sometimes a random shove knocks a block so hard that no plan, however clever, can keep it inside its safe zone. If the rules said “the block must stay inside, no exceptions”, the puzzle would have no solution and the controller would be stuck.\nSo the safe zones are made soft. A block is allowed to stray outside, but the plan pays a hefty fine for every bit it goes over. The fine is large enough that whenever staying inside is possible, the plan does exactly that. It’s only when there’s no other choice that a block is allowed to go a little over, and even then the plan does its best to bring it back.\nThe motor limits, on the other hand, stay hard. A motor physically can’t push harder than its maximum, so the plan is never allowed to ask it to."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
-    "href": "posts/portfolio/portfolio.html#where-the-ice-cream-cone-comes-in",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Where the ice-cream cone comes in",
-    "text": "Where the ice-cream cone comes in\nTo work out a portfolio’s total wobble, you collect all its exposures, to each shared factor and to each asset’s personal risk, and measure their combined size, the way you’d measure the length of an arrow from its parts.\nThe rule “this combined size must be below the limit” has a surprising shape. If you drew all the portfolios that satisfy it (and let the limit itself vary), you’d get a shape like a cone. It even has a nickname among optimisation folk: the ice-cream cone. Its formal name is the second-order cone.\nWhy does that matter? Because some optimisation solvers can only handle flat-sided shapes, built from straight-line rules like “this plus that must be at most ten”. A cone has a curved, rounded surface, so those solvers can’t take it directly. Jaddle can: at each step it takes a stride towards a better answer, then gently pushes the result back inside the cone if it’s wandered out."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
+    "href": "posts/mpc-fleet/mpc-fleet.html#one-at-a-time-versus-all-together",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "One at a time versus all together",
+    "text": "One at a time versus all together\nA single one of these puzzles is tiny. A good solver running on an ordinary computer processor (CPU) can crack one in well under a thousandth of a second. That’s very hard to beat.\nBut we don’t have one system. We have a thousand, each starting from its own random position and getting its own random shoves. At every step, we need a thousand fresh plans.\nHere’s where the two approaches differ:\n\nThe one-at-a-time approach solves the thousand puzzles one after another, using a well-known solver called SCS. It’s a bit like a single brilliant runner delivering a thousand letters, one trip at a time.\nThe all-together approach uses Jaddle on a graphics card (GPU). All thousand chains have the same springs, motors and rules; only their positions differ. So Jaddle solves all thousand puzzles side by side, in lockstep, like a marching band where every musician takes the same step at the same time.\n\nBoth approaches use a warm start: each new plan begins from the previous step’s plan, shifted forward by one step. Since the world hasn’t changed much in half a second, the old plan is usually a great starting guess."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
-    "href": "posts/portfolio/portfolio.html#tracing-the-efficient-frontier",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Tracing the efficient frontier",
-    "text": "Tracing the efficient frontier\nRather than picking one wobble limit, we try five, ranging from cautious (6% volatility) to adventurous (20%). For each one, we find the best possible portfolio.\nIf you plot the results, with risk along the bottom and expected return up the side, you get a curve that finance people call the efficient frontier. Every point on it is a portfolio where you can’t get more expected return without accepting more risk. Any portfolio below the curve is leaving money on the table.\nTwo things make tracing this curve quicker:\n\nWarm starts. Each new solve begins from the previous answer instead of from scratch. Moving the limit from 6% to 8% doesn’t change the best portfolio completely, so starting nearby saves a lot of work.\nReusing the setup. The problem is described once, and only the wobble limit changes between solves."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
+    "href": "posts/mpc-fleet/mpc-fleet.html#and-the-winner-is",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "And the winner is…",
+    "text": "And the winner is…\nIt depends on how many systems you have, which is the most interesting part of the whole example.\n\nOne system: the one-at-a-time solver wins. A single tiny puzzle leaves a GPU almost entirely idle; it spends most of its time just getting started.\nTens of systems: the batched approach catches up.\nA thousand systems: the batched approach on a laptop GPU spends about one-fortieth as long per puzzle as the one-at-a-time solver, and its plans are slightly more accurate too. Even running the batched approach on an ordinary CPU, it’s about three times faster than looping.\nTen thousand systems: something new happens…"
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
-    "href": "posts/portfolio/portfolio.html#the-slope-tells-a-story",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "The slope tells a story",
-    "text": "The slope tells a story\nEvery time the solver obeys a rule, it can also report how much that rule is costing. For the wobble limit, this number answers the question: “If I allowed a little more wobble, how much extra return would I get?”\nThat’s precisely the slope of the efficient frontier at that point, and it shrinks as the limit grows. When you’re being very cautious, accepting a bit more risk buys you a healthy boost in return. When you’re already being adventurous, each extra bit of risk buys less and less. Like adding sugar to tea: the first spoonful makes a big difference; the fifth, not so much."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-slowest-member-of-the-band",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "The slowest member of the band",
+    "text": "The slowest member of the band\nRemember the marching band? The band only finishes when its slowest member finishes. In a fleet of ten thousand, there are always a few chains in a tricky spot, perhaps just shoved past the edge of their safe zone, and their puzzles take longer to solve. Everyone else ends up waiting for them.\nThe fix is something every real controller needs anyway: a deadline. We give the solver a fixed amount of effort per step. Any system that hasn’t fully finished by then simply uses the best plan it has so far. Because Jaddle always keeps its answers within the motor limits as it works, even an unfinished plan never asks a motor to do the impossible.\nWith a deadline in place, the time per puzzle for ten thousand systems drops back down near its best."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
-    "href": "posts/portfolio/portfolio.html#what-the-portfolios-look-like",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "What the portfolios look like",
-    "text": "What the portfolios look like\nAt the cautious end, the best portfolio is spread across many assets, leaning hard on diversification to cancel out personal wobbles.\nAs the limit loosens, the portfolio concentrates on fewer assets with higher expected returns. Freed from the need to stay calm, it stops spreading its bets and starts backing its favourites."
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
+    "href": "posts/mpc-fleet/mpc-fleet.html#do-they-agree",
+    "title": "Herding a Thousand Springy Robots",
+    "section": "Do they agree?",
+    "text": "Do they agree?\nSpeed is no use if the answers are wrong. So we check both approaches against a reference answer solved to extremely high accuracy. Both are close, and over the whole run, the two fleets end up with nearly identical total costs. The blocks stay calm, the motors stay within their limits, and the chains settle down in both cases."
   },
   {
-    "objectID": "posts/portfolio/portfolio.html#checking-our-work",
-    "href": "posts/portfolio/portfolio.html#checking-our-work",
-    "title": "How Much Wobble Can You Handle?",
-    "section": "Checking our work",
-    "text": "Checking our work\nTo make sure Jaddle’s answers are right, we solve every problem a second time with Clarabel, a well-respected solver that ships with CVXPY. The returns agree to within a tiny fraction of a percent, and so do the portfolios themselves."
-  },
-  {
-    "objectID": "posts/portfolio/portfolio.html#the-takeaway",
-    "href": "posts/portfolio/portfolio.html#the-takeaway",
-    "title": "How Much Wobble Can You Handle?",
+    "objectID": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
+    "href": "posts/mpc-fleet/mpc-fleet.html#the-takeaway",
+    "title": "Herding a Thousand Springy Robots",
     "section": "The takeaway",
-    "text": "The takeaway\nInvesting well isn’t just about picking winners. It’s about understanding how your choices wobble together. By describing risk as the size of an arrow, and using a solver that’s comfortable with the curved, cone-shaped rules that come with it, we can find, for any level of nerve, the best portfolio for that amount of risk. And we get a bonus: a clear reading of exactly how much extra return each extra bit of courage would buy."
+    "text": "The takeaway\nThis example isn’t saying “always use a GPU”. If you’re controlling one robot and need an answer within a strict fraction of a millisecond, a traditional CPU solver is still the right tool.\nBut a surprising number of real problems involve lots of similar decisions at once: a fleet of delivery robots, a wind farm full of turbines, or testing one controller against thousands of possible futures to see how it copes. In those cases, it’s worth asking the marching-band question: could all of these take the same step together? When the answer is yes, solving them side by side can be dramatically faster than solving them one at a time."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html",
-    "href": "posts/robust-kalman/robust-kalman.html",
-    "title": "Ignoring the Fibbers",
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
     "section": "",
-    "text": "Imagine you’re trying to follow a remote-controlled boat drifting around a pond, but you can’t see it directly. Instead, a friend on the bank shouts out its position every few seconds. Most of the time they’re pretty accurate, give or take a little. But your friend is easily distracted, and about one time in five they shout out something completely off, as if they’d glanced at a duck instead.\nCan you still work out where the boat actually went?"
+    "text": "With default settings, Jaddle certified 382 of the 383 LP relaxations in the PDLP papers’ hard MIPLIB 2017 set, to a relative tolerance of 1e-4, on a single laptop GPU. The shifted geometric mean solve time was 6.9 seconds, and half the instances finished in under 3.2 seconds.\nJaddle is a saddle-point solver written entirely in JAX, so it runs unchanged on CPU, GPU and TPU. Its algorithm is explained in the How Jaddle Works post. First-order LP solvers are fast per iteration but have a reputation for being fragile. Some instances stall for thousands of iterations, and the usual fix is per-instance tuning. This article shows that a fixed configuration can clear almost the whole benchmark.\nIt also looks at the one instance that did not converge, hgms62. It was within a factor of about four of the tolerance when the clock ran out. Changing one setting from its default gets it over the line."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
-    "href": "posts/robust-kalman/robust-kalman.html#two-sources-of-information",
-    "title": "Ignoring the Fibbers",
-    "section": "Two sources of information",
-    "text": "Two sources of information\nYou have two things to go on:\n\nThe measurements, your friend’s shouted positions. Most are close; some are wild.\nThe physics. Boats don’t teleport. They glide along, speeding up and slowing down smoothly, nudged now and then by gusts of wind you can’t predict.\n\nThe trick is to combine them. You’re looking for a path that obeys the physics and stays reasonably close to the measurements. If a measurement says the boat jumped five metres to the left in an instant, the physics says “that’s not possible”, and the path should mostly ignore it.\nFinding the best such path, after the fact, using all the measurements at once, is called smoothing."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#the-benchmark-set",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#the-benchmark-set",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "The benchmark set",
+    "text": "The benchmark set\nThe test set is the 383 MIPLIB 2017 instances used to evaluate PDLP and cuPDLP, taken from the mip_relaxations_instance_list in FirstOrderLp.jl. Each instance has between 100,000 and 10 million nonzeros. Integrality is dropped, so every instance is solved as a plain LP.\nThe set is hard for first-order methods for reasons that have little to do with size:\n\nWide coefficient ranges. Many instances mix coefficients of 1 with big-M terms of 1e6 or more. Diagonal scaling cannot fully remove this, and it slows Jaddle down a lot.\nHidden objectives. Some models put the objective in a dense equality row, such as min z subject to z = Σ aⱼxⱼ. The real cost structure is then hidden in the constraints, and the primal iterates drift off feasibility.\nDegeneracy and long tails. Many relaxations have large optimal faces or near-parallel constraints. Iterates then circle the optimum for a long time before the duality gap closes.\n\nThe instances range from 150 to 1.45 million columns and from 36 to 2.95 million rows. One configuration has to handle all of them."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
-    "href": "posts/robust-kalman/robust-kalman.html#the-classic-recipe-the-kalman-smoother",
-    "title": "Ignoring the Fibbers",
-    "section": "The classic recipe: the Kalman smoother",
-    "text": "The classic recipe: the Kalman smoother\nIn the 1960s, Rudolf Kalman developed a beautifully efficient method for exactly this kind of problem. Versions of his ideas helped steer the Apollo spacecraft to the Moon, and today they run inside phones, cars, drones and countless other gadgets.\nThe classic approach chooses the path that keeps two things small at once:\n\nthe wind gusts needed to explain the path (smaller gusts mean a more natural path), and\nthe misses, the gaps between the path and each measurement.\n\nTo combine all the misses into one number, it squares each one and adds them up. Squaring makes sense when errors are small and well-behaved: it treats misses in either direction equally and is very convenient mathematically."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#experiment-setup",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#experiment-setup",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "Experiment setup",
+    "text": "Experiment setup\nEvery instance ran through the same pipeline with the same solver settings. Nothing was tuned per instance.\n\n\n\n\n\n\n\nSetting\nValue\n\n\n\n\nHardware\nOne NVIDIA GeForce RTX 5070 Ti Laptop GPU\n\n\nPrecision\nfloat64\n\n\nSolver settings\njl.solve defaults: alternating update, adaptive step size, adaptive restarts, adaptive diagonal scaling with diag_clamp=10\n\n\nPresolve\nHiGHS presolve, then Jaddle’s defined-variable elimination\n\n\nTolerance\n1e-4, relative, on primal feasibility, dual feasibility and duality gap\n\n\nResidual norm\nl2\n\n\nTime limit\n3,600 seconds per instance\n\n\nHarness\nbenchmarks/benchmark.py --tol 1e-4 --max-seconds 3600\n\n\n\nAn instance counts as converged when Jaddle returns a full optimality certificate on the presolved LP. All three residuals must be below the tolerance. Jaddle does not stop on a heuristic such as objective stalling.\nThe headline time is the iteration loop, including the one-off XLA compile on the first epoch. Wall time adds presolve, scaling, setup and postsolve. Unsolved instances count at the full 3,600 seconds in every average, as in the PDLP papers.\n\nWhy a tolerance of 1e-4\nA relative tolerance of 1e-4 is the “quick and ready” setting. It puts the objective within about 0.01% of optimal, with constraint violations of the same relative size. For many uses that is the answer:\n\nPlanning and what-if runs, where the input data is far less accurate than 1e-4.\nMIP root relaxations and bounds, where a near-optimal dual bound is what matters.\nWarm starts and crossover. A 1e-4 point is close enough to the optimal face that a simplex repair is cheap. On mzzv11, crossover from a 1e-4 point took 125 to 6,077 pivots, against 47,774 for HiGHS’s simplex from a cold start.\n\nFirst-order methods also slow down as they approach the optimum, so each extra digit costs more than the last. Stopping at 1e-4 keeps the solver where it is fastest. The PDLP papers use 1e-4 as their moderate-accuracy level, which makes the results comparable.\nWhen more accuracy is needed, Jaddle provides tools that start from a 1e-4 solution: feasibility polishing (jl.solve_with_polishing), iterative refinement (jl.solve_with_refinement) and crossover to an exact vertex (jl.crossover)."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
-    "href": "posts/robust-kalman/robust-kalman.html#the-problem-with-squaring",
-    "title": "Ignoring the Fibbers",
-    "section": "The problem with squaring",
-    "text": "The problem with squaring\nSquaring has a weakness. A miss that’s twice as big counts four times as much. A miss that’s twenty times as big counts four hundred times as much.\nIn our example, the occasional wild measurement is about twenty times noisier than a normal one. So when the classic smoother tries to keep the squared misses small, those few wild measurements dominate everything. They act like bullies, dragging the estimated path towards themselves, because ignoring them would be “too expensive”.\nIt’s a bit like a teacher averaging test scores where one student’s answer of “a million” for a question with answer “seven” drags the class average into the stratosphere."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#presolve-highs-plus-a-jaddle-specific-reduction",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#presolve-highs-plus-a-jaddle-specific-reduction",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "Presolve: HiGHS plus a Jaddle-specific reduction",
+    "text": "Presolve: HiGHS plus a Jaddle-specific reduction\nEach instance goes through jl.solve_with_presolve with the defined-variable elimination switched on. It runs five steps:\n\nHiGHS presolve removes redundant rows and columns, fixes variables and tightens bounds.\nDefined-variable elimination, Jaddle’s own reduction, removes dense defining rows that HiGHS keeps.\nJaddle solves the reduced LP.\nElimination postsolve recovers the eliminated variables and the duals of their rows.\nHiGHS postsolve maps the primal and dual solution back to the original model.\n\nPresolve is cheap next to the solve. The median presolve time was 0.28 seconds. HiGHS kept a median of 95% of the columns. Presolve also solved one instance outright: neos-787933, with 236,376 columns, which counts as one of the 382.\n\nWhy Jaddle needs its own presolve\nStandard presolvers are built for simplex and interior-point methods, which factorise matrices. For those methods, fill-in is expensive and a dense row is cheap. Jaddle has the opposite trade-off. It only does matrix-vector products, so extra nonzeros cost little. But some row structures damage the conditioning that decides how fast it converges.\nThe worst of these is a defined variable: a row a·z + r·x = b that defines z as a combination of other variables. In gmut-* and leo1, z is a zero-cost aggregate whose coefficients mirror the objective. In proteindesign*, z is the objective itself: min z subject to z = Σ aⱼxⱼ. In both cases, the dense row hides the objective structure from the scaling, and the primal iterates drift off feasibility.\nHiGHS and SCIP leave these rows alone for three reasons. z is not a column singleton, because inequality rows use it too. It is not free, so substituting it needs an explicit bound row. And substituting a dense row breaks their fill-in limits.\n\n\nWhat the elimination does\njaddle.presolve.eliminate_defined_variables substitutes z = E·x + const throughout the model:\n\nThe cost of z moves onto x, and any constant goes into the objective offset.\nInequality rows that use z get the substitution added to them.\nBounds on z become rows on x, unless the bounds on x already imply them.\n\nThe rules are conservative. A zero-cost aggregate row needs at least 100 nonzeros to qualify. An objective row qualifies from 2 nonzeros, because a short objective row hides the objective just as well. z may appear in at most four inequality rows. Total fill-in is capped at the original nonzero count. Later passes follow objective chains only, pushing the cost down onto the decision variables. On radiationm40-10-02, for example, min z, z = 1601 N + T is followed by rows that define N and T.\nThe postsolve recovers both the eliminated primal values and the duals of the removed rows. The mapped primal-dual pair is exactly as feasible and optimal as the reduced one."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
-    "href": "posts/robust-kalman/robust-kalman.html#a-fairer-referee-the-huber-penalty",
-    "title": "Ignoring the Fibbers",
-    "section": "A fairer referee: the Huber penalty",
-    "text": "A fairer referee: the Huber penalty\nThe fix is to change how misses are scored. Instead of squaring every miss, we use the Huber penalty, named after the statistician Peter Huber:\n\nFor small misses, it behaves just like squaring. Normal, everyday noise is treated exactly as before.\nFor big misses, it switches to growing in a straight line. A miss twice as big costs only about twice as much, not four times.\n\n\n\n\n\n\n\nTipA helpful way to picture it\n\n\n\nThe squared penalty is like a rubber band that pulls harder and harder the further you stretch it. The Huber penalty is a rubber band that, beyond a certain point, stops getting stronger and just pulls with a steady force. Wild measurements still tug on the path, but they can no longer yank it off course.\n\n\nThis version is called the robust Kalman smoother. “Robust”, in statistics, means “doesn’t fall apart when some of the data is bad”."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#results",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#results",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "Results",
+    "text": "Results\nJaddle certified 382 of 383 instances, and most of them in seconds. Half finished in under 3.2 seconds, 90% in under 25 seconds, and only four needed more than five minutes.\n\n\n\n\n\n\nFigure 1: 365 of 383 instances certified within a minute, 382 within the hour. Instances certified to 1e-4 against solve time (log scale), default settings, one laptop GPU. Times are the iteration loop, including XLA compile; neos-787933, solved by presolve, is counted at the start.\n\n\n\n\n\n\n\n\n\n\nOutcome\nInstances\n\n\n\n\nCertified optimal on the presolved LP\n382 / 383 (381 by Jaddle, 1 by presolve)\n\n\nTime limit reached\n1 (hgms62)\n\n\nErrors or numerical failures\n0\n\n\n\nThe table below gives shifted geometric means with a 10-second shift (SGM10), the PDLP papers’ summary statistic. hgms62 counts at 3,600 seconds.\n\n\n\n\n\n\n\n\nTime measured\nSGM10\nMedian, certified instances\n\n\n\n\nIteration loop, including first-epoch XLA compile\n6.86 s\n3.19 s\n\n\nIteration loop, compile amortised out\n4.72 s\n1.29 s\n\n\nWall clock, including presolve, scaling, setup and postsolve\n9.56 s\n5.11 s\n\n\n\nThe median instance needed only 8 epochs. The long tail is short. Apart from hgms62, the slowest instances were snp-02-004-104 at 761 seconds, hgms30 at 1,190 seconds and fhnw-binschedule1 at 1,550 seconds. All three finished well inside the limit.\nThe gap between the first two rows is compile time. Every new problem shape triggers an XLA compile, which costs one to two seconds. On small instances it is often most of the solve. Jaddle caches compiled programs on disk, so repeat solves of a same-shaped model skip it."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-experiment",
-    "href": "posts/robust-kalman/robust-kalman.html#the-experiment",
-    "title": "Ignoring the Fibbers",
-    "section": "The experiment",
-    "text": "The experiment\nWe simulate an object moving around a flat plane for 50 seconds, measured 1,000 times. It has a position and a speed, a little friction slowing it down, and random pushes knocking it around. Each measurement has a one-in-five chance of being an outlier.\nThen we estimate the path twice: once with the classic smoother and once with the robust one.\nThe results are striking. The classic smoother’s path is visibly dragged around by the outliers, wandering off towards the wild measurements. The robust smoother’s path sticks closely to the true trajectory, as if it had simply noticed which shouts to take with a pinch of salt."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#case-study-hgms62-the-one-that-got-away",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#case-study-hgms62-the-one-that-got-away",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "Case study: hgms62, the one that got away",
+    "text": "Case study: hgms62, the one that got away\nhgms62 is the only instance Jaddle did not certify with default settings. It ran for the full hour, about 2.9 million iterations, and stopped close to the tolerance but not inside it.\n\nThe instance\nhgms62 has 48,597 columns and 582,237 rows, or 37,235 by 569,830 after presolve. Size is not the problem. It ranks 46th by file size, and rwth-timetable, ten times larger, certified in 10 seconds. Its half-size sibling, hgms30, is telling. It was the second-slowest certified instance, taking 3,869 epochs and 1,190 seconds. The hgms family is hard for Jaddle because of its structure, and hgms62 is about twice the size of hgms30.\nThe family has a history in Jaddle’s development. On hgms30, an earlier version locked into a single restart cycle for more than 1,250 epochs, with the objective stuck 7% off optimal. That led to the artificial restart rule in the current solver, which forces a restart when a cycle runs too long without progress.\n\n\nHow close it got\nWhen the clock ran out, the postsolved point had these residuals on the original LP:\n\n\n\nResidual\nValue at 3,600 s\nTolerance\nRatio to tolerance\n\n\n\n\nPrimal feasibility\n9.3e-5\n1e-4\n0.9 (met)\n\n\nDual feasibility\n2.1e-4\n1e-4\n2.1\n\n\nDuality gap\n3.9e-4\n1e-4\n3.9\n\n\n\nThe primal was feasible to tolerance. The dual feasibility and the gap were the problem: still converging, but slowly. A 600-second run of an earlier build had left them at 1.7e-2 and 8.5e-2, so the solver was making steady progress, not stalling. It just needed more time than the limit allowed.\n\n\nThe fix: widen the diagonal clamp\nThe default that matters here is diag_clamp. Jaddle starts from Ruiz and Pock–Chambolle scaling, then adapts a per-coordinate diagonal metric at each restart. Coordinates that drift steadily get larger steps, and coordinates that oscillate get smaller ones. This adaptive scaling is on by default, because it cut the shifted geometric mean solve time on this benchmark by about 18%.\ndiag_clamp limits how far that adaptation can move each coordinate from the baseline scaling. The default of 10 keeps every scale factor in [1/10, 10]. That is a safe bound across the whole benchmark, but on hgms62 it is too tight. The likely reason is that some coordinates need more rescaling than a factor of 10 allows, so the clamp holds them back.\nRaising diag_clamp greatly lets the adaptive metric correct the scaling fully, and hgms62 then converges. Nothing else changes: the same presolve, tolerance and time limit.\nimport jaddle.jaddle_linear as jl\n\nresult = jl.solve_with_presolve(\n    \"hgms62.mps\",\n    eliminate_defined_vars=True,  # as in the benchmark\n    primal_feasibility_tolerance=1e-4,\n    dual_feasibility_tolerance=1e-4,\n    dual_gap_tolerance=1e-4,\n    diag_clamp=1e8,  # default 10.0\n)\nWith this setting, hgms62 converges in 73.65 seconds.\n\n\nWhy the default stays at 10\nA wider clamp is not a free win. The adaptive metric changes the geometry the solver works in, and a loose bound gives it more room to go wrong on other instances. Jaddle’s primal weight shows the same risk: with a wide k_scale clamp and per-epoch updates it ran away on mzzv11, reaching 1e8 with the gap stuck at 0.94. The default is set for the whole benchmark, not for its hardest member.\nThis is the pattern for a first-order solver: one robust default that handles 382 of 383 instances, and a small set of documented settings for the rare instance that needs more. When a solve stalls, diag_clamp is a good first setting to try. Turning adaptive scaling off with diag_adapt=False is another."
   },
   {
-    "objectID": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
-    "href": "posts/robust-kalman/robust-kalman.html#what-jaddle-does-differently",
-    "title": "Ignoring the Fibbers",
-    "section": "What Jaddle does differently",
-    "text": "What Jaddle does differently\nBoth versions of the problem are written in CVXPY, a popular language for describing optimisation problems. In fact, this is one of CVXPY’s own showcase examples.\nThe classic smoother is a relatively simple kind of problem (a quadratic program), and Jaddle solves it directly.\nThe robust version is more interesting. Normally CVXPY would translate the Huber penalty into a bundle of cone-shaped rules, which works but makes the problem bigger and more complicated. Jaddle takes a different route: it keeps the Huber penalty as the smooth, gently curving function it really is, and solves the problem in that form. It also notices that the “miss” for each measurement is completely determined by the path, so it can drop those as separate unknowns and work with the path alone. Fewer moving parts, same answer.\nWe check both of Jaddle’s answers against Clarabel, a well-established solver that comes with CVXPY, and they agree."
-  },
-  {
-    "objectID": "posts/robust-kalman/robust-kalman.html#the-takeaway",
-    "href": "posts/robust-kalman/robust-kalman.html#the-takeaway",
-    "title": "Ignoring the Fibbers",
-    "section": "The takeaway",
-    "text": "The takeaway\nReal-world data is rarely perfectly behaved. Sensors glitch, signals bounce, people mishear. A method that assumes every measurement is roughly right can be thrown badly off course by a handful that aren’t.\nBy changing one small thing, how we score big misses, the robust Kalman smoother learns to listen to the crowd without being bullied by the loudest fibbers. It’s a good lesson beyond boats and ponds: when you’re combining lots of evidence, make sure no single piece gets to shout over all the rest."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "",
-    "text": "Imagine a bank that wants to save time. Instead of a person reading every loan application, it wants a computer program to read them and say “yes” or “no”. To teach the program, the bank hands over a big pile of old decisions made by its human loan officers and says: learn to do what they did.\nThat sounds sensible. But there is a catch. What if the old decisions were unfair?"
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-world-with-a-thumb-on-the-scale",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "A world with a thumb on the scale",
-    "text": "A world with a thumb on the scale\nIn this example we build a small make-believe world so we can see exactly what is going on. There are applicants from two groups, which we’ll call Group A and Group B. About three in ten applicants belong to Group B.\nEvery applicant has a few “skill” scores, things like income stability or repayment history. Here is the important part: the skills are spread out in exactly the same way in both groups. Nobody in Group B is any less capable, on average, than anyone in Group A.\nIn a fair world, whether you get a loan depends only on those skills. But the historical decisions the bank kept came from a world with a thumb on the scale. Every Group B applicant had a fixed amount knocked off their chances, just for being in Group B.\nSo the pile of old decisions, the one we’re asking the computer to learn from, quietly contains a bias."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#just-dont-tell-it-the-group",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "“Just don’t tell it the group!”",
-    "text": "“Just don’t tell it the group!”\nThe first idea most people have is simple: don’t show the computer which group each applicant is in. If it can’t see the group, surely it can’t discriminate?\nSadly, it isn’t that easy. In our world, each applicant also has two extra details, a bit like a postcode, that happen to differ a little between the groups. They say nothing about whether someone will repay a loan. They are what statisticians call proxies: clues that let you guess the group without being told.\nA computer trained to copy the old decisions is very good at spotting patterns. It notices that applicants with a certain kind of “postcode” were turned down more often, and it learns to lean on that clue. Sure enough, when we train a plain model, it puts a negative weight on those postcode-like features and approves Group B applicants far less often than Group A.\n\n\n\n\n\n\nNoteThe lesson\n\n\n\nHiding a sensitive attribute is not the same as being fair. If other information can stand in for it, a model can rebuild the bias on its own."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#how-the-robot-banker-thinks",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "How the robot banker thinks",
-    "text": "How the robot banker thinks\nThe model we use is called logistic regression, and it is one of the oldest and most trusted tools in machine learning. You can think of it as a points system:\n\nEach feature (each skill score, each postcode detail) earns or loses the applicant some points.\nThe points are added up into a single score.\nIf the score is above zero, the answer is “yes”. Below zero, “no”.\n\n“Learning” just means adjusting how many points each feature is worth until the model’s answers match the training data as closely as possible. Finding the best point values is an optimisation problem: a search for the settings that make some measure of error as small as it can be."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#adding-a-fairness-rule",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "Adding a fairness rule",
-    "text": "Adding a fairness rule\nTo push back against the bias, we give the optimiser an extra rule to obey while it learns. The rule we want is demographic parity: both groups should be approved at the same rate.\nThere is a small snag. Approval rates jump in steps: one applicant flips from “no” to “yes” and the rate suddenly hops. Optimisers prefer smooth hills to staircases. So, following a well-known approach by Zafar and colleagues (2017), we use a smoother stand-in for the rule:\n\nThe model’s average score shouldn’t depend on which group you’re in.\n\nWe also add a dial, which we’ll call the fairness bound. Turn the dial all the way up and there’s no rule at all: you get the plain, biased model. Turn it all the way down to zero and the two groups must have exactly the same average score. Anywhere in between is a compromise."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#what-we-found",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "What we found",
-    "text": "What we found\nWe trained two models: one with no fairness rule, and one with the dial at zero.\nThe fair model closes most of the gap in approval rates between the two groups. And something interesting happens to its accuracy:\n\nMeasured against the biased historical decisions, the fair model looks worse. Of course it does: it is refusing to copy the bias.\nMeasured against the fair decisions (the ones that depend only on skill), the fair model looks better.\n\nIn real life we would never get to see those “fair decisions”. We only know them here because we built the world ourselves. But it shows something important: if the bias lives in the labels rather than in the people, then “accuracy against the past” can be a misleading report card."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-whole-trade-off-in-one-go",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "The whole trade-off in one go",
-    "text": "The whole trade-off in one go\nOne fair model and one unfair model only tell part of the story. What about all the settings in between?\nWe picked 40 different positions for the fairness dial and asked Jaddle, the optimisation library this example is built with, to train all 40 models at the same time, as one batch. That gives us a full curve showing how accuracy changes as the model becomes fairer, rather than a couple of dots.\nReading the curve from the unfair end to the fair end, accuracy against the biased labels slides down while accuracy against the fair labels climbs up."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-price-of-fairness",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "The price of fairness",
-    "text": "The price of fairness\nHere is my favourite part. When an optimiser obeys a rule, it can also tell you how much that rule is costing. Mathematicians call this a dual variable or shadow price. Think of it as a receipt that comes with each answer, saying: “if you tightened this rule by one more notch, the training error would go up by this much.”\nFor our fairness rule, that receipt is a price of fairness. We found that:\n\nWhen the dial is loose enough that the rule isn’t actually stopping anything, the price is zero. The rule is just along for the ride.\nAs the dial tightens, the price climbs steadily. Each extra step towards equal treatment costs a little more than the one before.\n\nThat’s useful information for real decision-makers. Rather than arguing in the abstract about whether fairness is “worth it”, you can see the actual exchange rate and talk about it openly."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#a-few-footnotes",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "A few footnotes",
-    "text": "A few footnotes\nFairness is a deep and much-debated subject, and this example is a small, tidy illustration rather than a final answer.\n\nDemographic parity is only one definition of fairness. Others ask for equal error rates, or equal treatment of similar individuals. They can disagree with each other, and choosing between them is a question about values, not just maths.\nOur world is made up. Real data is messier, and real bias is rarely a single fixed penalty.\nThe rule we used is a stand-in. Making average scores equal tends to bring approval rates together, but it doesn’t guarantee they match exactly."
-  },
-  {
-    "objectID": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
-    "href": "posts/fair-logistic-regression/fair-logistic-regression.html#the-takeaway",
-    "title": "Teaching a Robot Banker to Play Fair",
-    "section": "The takeaway",
-    "text": "The takeaway\nA model trained to imitate the past will happily imitate the past’s mistakes, even when you hide the obvious clues. Adding a fairness rule to the optimisation is a direct, transparent way to push back. And because the optimiser hands you a price for every rule it follows, you can see exactly what that fairness is costing, and decide with your eyes open."
+    "objectID": "posts/miplib-benchmark/miplib_benchmark.html#caveats-and-reproducing-the-run",
+    "href": "posts/miplib-benchmark/miplib_benchmark.html#caveats-and-reproducing-the-run",
+    "title": "Jaddle on the hard MIPLIB LP benchmark: 382 of 383",
+    "section": "Caveats and reproducing the run",
+    "text": "Caveats and reproducing the run\nThree points matter when reading these numbers.\n\nThe certificate is on the presolved LP. After HiGHS postsolve, 297 of the 383 points also pass the 1e-4 certificate on the original LP. Postsolve can enlarge a first-order solution’s small dual errors. Presolve can also rescale a problem a lot, which changes what a relative tolerance means. On leo1, presolve folds a row with 1e7 coefficients into the cost, so the objective is right but the original dual test fails. When the original certificate matters, polishing, iterative refinement or crossover can tighten the postsolved point.\nThe time limit matters for the hardest few. With a 600-second limit, earlier runs certified 380 of 383. hgms30 and fhnw-binschedule1 need 20 to 26 minutes.\nGPU runs are not bit-for-bit repeatable. The order of scatter-add operations varies, so identical runs can differ by several epochs.\n\nThe MPS files are not shipped with Jaddle. Download the 383 instances from the MIPLIB 2017 site into data/, then run from the repository root:\npython benchmarks/benchmark.py --tol 1e-4 --max-seconds 3600 --highs-solver none\n--highs-solver none skips the HiGHS reference solve, which can take longer than Jaddle’s. Add --diag-clamp 1e8 to rerun hgms62 with the wider clamp. The harness and its options are documented in benchmarks/README.md."
   },
   {
     "objectID": "posts/max-cut/max-cut.html",

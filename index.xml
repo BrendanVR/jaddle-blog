@@ -10,7 +10,326 @@
 <atom:link href="https://brendanvr.github.io/jaddle-blog/index.xml" rel="self" type="application/rss+xml"/>
 <description>A blog built with Quarto</description>
 <generator>quarto-1.10.19</generator>
-<lastBuildDate>Wed, 21 Oct 2026 16:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 22 Oct 2026 16:00:00 GMT</lastBuildDate>
+<item>
+  <title>Jaddle on the hard MIPLIB LP benchmark: 382 of 383</title>
+  <dc:creator>Brendan van Rooyen</dc:creator>
+  <link>https://brendanvr.github.io/jaddle-blog/posts/miplib-benchmark/miplib_benchmark.html</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>With default settings, Jaddle certified 382 of the 383 LP relaxations in the PDLP papers’ hard MIPLIB 2017 set, to a relative tolerance of 1e-4, on a single laptop GPU. The shifted geometric mean solve time was 6.9 seconds, and half the instances finished in under 3.2 seconds.</p>
+<p>Jaddle is a saddle-point solver written entirely in JAX, so it runs unchanged on CPU, GPU and TPU. Its algorithm is explained in the <a href="../how-jaddle-works/">How Jaddle Works</a> post. First-order LP solvers are fast per iteration but have a reputation for being fragile. Some instances stall for thousands of iterations, and the usual fix is per-instance tuning. This article shows that a fixed configuration can clear almost the whole benchmark.</p>
+<p>It also looks at the one instance that did not converge, hgms62. It was within a factor of about four of the tolerance when the clock ran out. Changing one setting from its default gets it over the line.</p>
+<section id="the-benchmark-set" class="level2">
+<h2 class="anchored" data-anchor-id="the-benchmark-set">The benchmark set</h2>
+<p>The test set is the 383 MIPLIB 2017 instances used to evaluate PDLP and cuPDLP, taken from the <code>mip_relaxations_instance_list</code> in FirstOrderLp.jl. Each instance has between 100,000 and 10 million nonzeros. Integrality is dropped, so every instance is solved as a plain LP.</p>
+<p>The set is hard for first-order methods for reasons that have little to do with size:</p>
+<ul>
+<li><strong>Wide coefficient ranges.</strong> Many instances mix coefficients of 1 with big-M terms of 1e6 or more. Diagonal scaling cannot fully remove this, and it slows Jaddle down a lot.</li>
+<li><strong>Hidden objectives.</strong> Some models put the objective in a dense equality row, such as <code>min z</code> subject to <code>z = Σ aⱼxⱼ</code>. The real cost structure is then hidden in the constraints, and the primal iterates drift off feasibility.</li>
+<li><strong>Degeneracy and long tails.</strong> Many relaxations have large optimal faces or near-parallel constraints. Iterates then circle the optimum for a long time before the duality gap closes.</li>
+</ul>
+<p>The instances range from 150 to 1.45 million columns and from 36 to 2.95 million rows. One configuration has to handle all of them.</p>
+</section>
+<section id="experiment-setup" class="level2">
+<h2 class="anchored" data-anchor-id="experiment-setup">Experiment setup</h2>
+<p>Every instance ran through the same pipeline with the same solver settings. Nothing was tuned per instance.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Hardware</td>
+<td>One NVIDIA GeForce RTX 5070 Ti Laptop GPU</td>
+</tr>
+<tr class="even">
+<td>Precision</td>
+<td>float64</td>
+</tr>
+<tr class="odd">
+<td>Solver settings</td>
+<td><code>jl.solve</code> defaults: alternating update, adaptive step size, adaptive restarts, adaptive diagonal scaling with <code>diag_clamp=10</code></td>
+</tr>
+<tr class="even">
+<td>Presolve</td>
+<td>HiGHS presolve, then Jaddle’s defined-variable elimination</td>
+</tr>
+<tr class="odd">
+<td>Tolerance</td>
+<td>1e-4, relative, on primal feasibility, dual feasibility and duality gap</td>
+</tr>
+<tr class="even">
+<td>Residual norm</td>
+<td>l2</td>
+</tr>
+<tr class="odd">
+<td>Time limit</td>
+<td>3,600 seconds per instance</td>
+</tr>
+<tr class="even">
+<td>Harness</td>
+<td><code>benchmarks/benchmark.py --tol 1e-4 --max-seconds 3600</code></td>
+</tr>
+</tbody>
+</table>
+<p>An instance counts as converged when Jaddle returns a full optimality certificate on the presolved LP. All three residuals must be below the tolerance. Jaddle does not stop on a heuristic such as objective stalling.</p>
+<p>The headline time is the iteration loop, including the one-off XLA compile on the first epoch. Wall time adds presolve, scaling, setup and postsolve. Unsolved instances count at the full 3,600 seconds in every average, as in the PDLP papers.</p>
+<section id="why-a-tolerance-of-1e-4" class="level3">
+<h3 class="anchored" data-anchor-id="why-a-tolerance-of-1e-4">Why a tolerance of 1e-4</h3>
+<p>A relative tolerance of 1e-4 is the “quick and ready” setting. It puts the objective within about 0.01% of optimal, with constraint violations of the same relative size. For many uses that is the answer:</p>
+<ul>
+<li><strong>Planning and what-if runs</strong>, where the input data is far less accurate than 1e-4.</li>
+<li><strong>MIP root relaxations and bounds</strong>, where a near-optimal dual bound is what matters.</li>
+<li><strong>Warm starts and crossover.</strong> A 1e-4 point is close enough to the optimal face that a simplex repair is cheap. On mzzv11, crossover from a 1e-4 point took 125 to 6,077 pivots, against 47,774 for HiGHS’s simplex from a cold start.</li>
+</ul>
+<p>First-order methods also slow down as they approach the optimum, so each extra digit costs more than the last. Stopping at 1e-4 keeps the solver where it is fastest. The PDLP papers use 1e-4 as their moderate-accuracy level, which makes the results comparable.</p>
+<p>When more accuracy is needed, Jaddle provides tools that start from a 1e-4 solution: feasibility polishing (<code>jl.solve_with_polishing</code>), iterative refinement (<code>jl.solve_with_refinement</code>) and crossover to an exact vertex (<code>jl.crossover</code>).</p>
+</section>
+</section>
+<section id="presolve-highs-plus-a-jaddle-specific-reduction" class="level2">
+<h2 class="anchored" data-anchor-id="presolve-highs-plus-a-jaddle-specific-reduction">Presolve: HiGHS plus a Jaddle-specific reduction</h2>
+<p>Each instance goes through <code>jl.solve_with_presolve</code> with the defined-variable elimination switched on. It runs five steps:</p>
+<ol type="1">
+<li><strong>HiGHS presolve</strong> removes redundant rows and columns, fixes variables and tightens bounds.</li>
+<li><strong>Defined-variable elimination</strong>, Jaddle’s own reduction, removes dense defining rows that HiGHS keeps.</li>
+<li><strong>Jaddle</strong> solves the reduced LP.</li>
+<li><strong>Elimination postsolve</strong> recovers the eliminated variables and the duals of their rows.</li>
+<li><strong>HiGHS postsolve</strong> maps the primal and dual solution back to the original model.</li>
+</ol>
+<p>Presolve is cheap next to the solve. The median presolve time was 0.28 seconds. HiGHS kept a median of 95% of the columns. Presolve also solved one instance outright: neos-787933, with 236,376 columns, which counts as one of the 382.</p>
+<section id="why-jaddle-needs-its-own-presolve" class="level3">
+<h3 class="anchored" data-anchor-id="why-jaddle-needs-its-own-presolve">Why Jaddle needs its own presolve</h3>
+<p>Standard presolvers are built for simplex and interior-point methods, which factorise matrices. For those methods, fill-in is expensive and a dense row is cheap. Jaddle has the opposite trade-off. It only does matrix-vector products, so extra nonzeros cost little. But some row structures damage the conditioning that decides how fast it converges.</p>
+<p>The worst of these is a <strong>defined variable</strong>: a row <code>a·z + r·x = b</code> that defines <code>z</code> as a combination of other variables. In gmut-* and leo1, <code>z</code> is a zero-cost aggregate whose coefficients mirror the objective. In proteindesign*, <code>z</code> is the objective itself: <code>min z</code> subject to <code>z = Σ aⱼxⱼ</code>. In both cases, the dense row hides the objective structure from the scaling, and the primal iterates drift off feasibility.</p>
+<p>HiGHS and SCIP leave these rows alone for three reasons. <code>z</code> is not a column singleton, because inequality rows use it too. It is not free, so substituting it needs an explicit bound row. And substituting a dense row breaks their fill-in limits.</p>
+</section>
+<section id="what-the-elimination-does" class="level3">
+<h3 class="anchored" data-anchor-id="what-the-elimination-does">What the elimination does</h3>
+<p><code>jaddle.presolve.eliminate_defined_variables</code> substitutes <code>z = E·x + const</code> throughout the model:</p>
+<ul>
+<li>The cost of <code>z</code> moves onto <code>x</code>, and any constant goes into the objective offset.</li>
+<li>Inequality rows that use <code>z</code> get the substitution added to them.</li>
+<li>Bounds on <code>z</code> become rows on <code>x</code>, unless the bounds on <code>x</code> already imply them.</li>
+</ul>
+<p>The rules are conservative. A zero-cost aggregate row needs at least 100 nonzeros to qualify. An objective row qualifies from 2 nonzeros, because a short objective row hides the objective just as well. <code>z</code> may appear in at most four inequality rows. Total fill-in is capped at the original nonzero count. Later passes follow objective chains only, pushing the cost down onto the decision variables. On radiationm40-10-02, for example, <code>min z, z = 1601 N + T</code> is followed by rows that define <code>N</code> and <code>T</code>.</p>
+<p>The postsolve recovers both the eliminated primal values and the duals of the removed rows. The mapped primal-dual pair is exactly as feasible and optimal as the reduced one.</p>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Jaddle certified 382 of 383 instances, and most of them in seconds. Half finished in under 3.2 seconds, 90% in under 25 seconds, and only four needed more than five minutes.</p>
+<div id="fig-certified" class="quarto-float quarto-figure quarto-figure-center anchored" alt="Step curve of instances certified against solve time on a log axis from 0.5 seconds to 1 hour. The curve rises steeply between 1 and 10 seconds, reaches 365 by 1 minute and 382 by the 1 hour limit, one short of the 383 instances in the set.">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-certified-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="https://brendanvr.github.io/jaddle-blog/posts/miplib-benchmark/figures/certified_vs_time.png" class="img-fluid figure-img" alt="Step curve of instances certified against solve time on a log axis from 0.5 seconds to 1 hour. The curve rises steeply between 1 and 10 seconds, reaches 365 by 1 minute and 382 by the 1 hour limit, one short of the 383 instances in the set.">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-certified-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: 365 of 383 instances certified within a minute, 382 within the hour. Instances certified to 1e-4 against solve time (log scale), default settings, one laptop GPU. Times are the iteration loop, including XLA compile; neos-787933, solved by presolve, is counted at the start.
+</figcaption>
+</figure>
+</div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Outcome</th>
+<th>Instances</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Certified optimal on the presolved LP</td>
+<td><strong>382 / 383</strong> (381 by Jaddle, 1 by presolve)</td>
+</tr>
+<tr class="even">
+<td>Time limit reached</td>
+<td>1 (hgms62)</td>
+</tr>
+<tr class="odd">
+<td>Errors or numerical failures</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>The table below gives shifted geometric means with a 10-second shift (SGM10), the PDLP papers’ summary statistic. hgms62 counts at 3,600 seconds.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Time measured</th>
+<th>SGM10</th>
+<th>Median, certified instances</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Iteration loop, including first-epoch XLA compile</td>
+<td>6.86 s</td>
+<td>3.19 s</td>
+</tr>
+<tr class="even">
+<td>Iteration loop, compile amortised out</td>
+<td>4.72 s</td>
+<td>1.29 s</td>
+</tr>
+<tr class="odd">
+<td>Wall clock, including presolve, scaling, setup and postsolve</td>
+<td>9.56 s</td>
+<td>5.11 s</td>
+</tr>
+</tbody>
+</table>
+<p>The median instance needed only 8 epochs. The long tail is short. Apart from hgms62, the slowest instances were snp-02-004-104 at 761 seconds, hgms30 at 1,190 seconds and fhnw-binschedule1 at 1,550 seconds. All three finished well inside the limit.</p>
+<p>The gap between the first two rows is compile time. Every new problem shape triggers an XLA compile, which costs one to two seconds. On small instances it is often most of the solve. Jaddle caches compiled programs on disk, so repeat solves of a same-shaped model skip it.</p>
+</section>
+<section id="case-study-hgms62-the-one-that-got-away" class="level2">
+<h2 class="anchored" data-anchor-id="case-study-hgms62-the-one-that-got-away">Case study: hgms62, the one that got away</h2>
+<p>hgms62 is the only instance Jaddle did not certify with default settings. It ran for the full hour, about 2.9 million iterations, and stopped close to the tolerance but not inside it.</p>
+<section id="the-instance" class="level3">
+<h3 class="anchored" data-anchor-id="the-instance">The instance</h3>
+<p>hgms62 has 48,597 columns and 582,237 rows, or 37,235 by 569,830 after presolve. Size is not the problem. It ranks 46th by file size, and rwth-timetable, ten times larger, certified in 10 seconds. Its half-size sibling, hgms30, is telling. It was the second-slowest certified instance, taking 3,869 epochs and 1,190 seconds. The hgms family is hard for Jaddle because of its structure, and hgms62 is about twice the size of hgms30.</p>
+<p>The family has a history in Jaddle’s development. On hgms30, an earlier version locked into a single restart cycle for more than 1,250 epochs, with the objective stuck 7% off optimal. That led to the artificial restart rule in the current solver, which forces a restart when a cycle runs too long without progress.</p>
+</section>
+<section id="how-close-it-got" class="level3">
+<h3 class="anchored" data-anchor-id="how-close-it-got">How close it got</h3>
+<p>When the clock ran out, the postsolved point had these residuals on the original LP:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Residual</th>
+<th>Value at 3,600 s</th>
+<th>Tolerance</th>
+<th>Ratio to tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Primal feasibility</td>
+<td>9.3e-5</td>
+<td>1e-4</td>
+<td>0.9 (met)</td>
+</tr>
+<tr class="even">
+<td>Dual feasibility</td>
+<td>2.1e-4</td>
+<td>1e-4</td>
+<td>2.1</td>
+</tr>
+<tr class="odd">
+<td>Duality gap</td>
+<td>3.9e-4</td>
+<td>1e-4</td>
+<td>3.9</td>
+</tr>
+</tbody>
+</table>
+<p>The primal was feasible to tolerance. The dual feasibility and the gap were the problem: still converging, but slowly. A 600-second run of an earlier build had left them at 1.7e-2 and 8.5e-2, so the solver was making steady progress, not stalling. It just needed more time than the limit allowed.</p>
+</section>
+<section id="the-fix-widen-the-diagonal-clamp" class="level3">
+<h3 class="anchored" data-anchor-id="the-fix-widen-the-diagonal-clamp">The fix: widen the diagonal clamp</h3>
+<p>The default that matters here is <code>diag_clamp</code>. Jaddle starts from Ruiz and Pock–Chambolle scaling, then adapts a per-coordinate diagonal metric at each restart. Coordinates that drift steadily get larger steps, and coordinates that oscillate get smaller ones. This adaptive scaling is on by default, because it cut the shifted geometric mean solve time on this benchmark by about 18%.</p>
+<p><code>diag_clamp</code> limits how far that adaptation can move each coordinate from the baseline scaling. The default of 10 keeps every scale factor in [1/10, 10]. That is a safe bound across the whole benchmark, but on hgms62 it is too tight. The likely reason is that some coordinates need more rescaling than a factor of 10 allows, so the clamp holds them back.</p>
+<p>Raising <code>diag_clamp</code> greatly lets the adaptive metric correct the scaling fully, and hgms62 then converges. Nothing else changes: the same presolve, tolerance and time limit.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> jaddle.jaddle_linear <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> jl</span>
+<span id="cb1-2"></span>
+<span id="cb1-3">result <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> jl.solve_with_presolve(</span>
+<span id="cb1-4">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"hgms62.mps"</span>,</span>
+<span id="cb1-5">    eliminate_defined_vars<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">True</span>,  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># as in the benchmark</span></span>
+<span id="cb1-6">    primal_feasibility_tolerance<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-4</span>,</span>
+<span id="cb1-7">    dual_feasibility_tolerance<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-4</span>,</span>
+<span id="cb1-8">    dual_gap_tolerance<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-4</span>,</span>
+<span id="cb1-9">    diag_clamp<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e8</span>,  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># default 10.0</span></span>
+<span id="cb1-10">)</span></code></pre></div></div>
+<p>With this setting, hgms62 converges in 73.65 seconds.</p>
+</section>
+<section id="why-the-default-stays-at-10" class="level3">
+<h3 class="anchored" data-anchor-id="why-the-default-stays-at-10">Why the default stays at 10</h3>
+<p>A wider clamp is not a free win. The adaptive metric changes the geometry the solver works in, and a loose bound gives it more room to go wrong on other instances. Jaddle’s primal weight shows the same risk: with a wide k_scale clamp and per-epoch updates it ran away on mzzv11, reaching 1e8 with the gap stuck at 0.94. The default is set for the whole benchmark, not for its hardest member.</p>
+<p>This is the pattern for a first-order solver: one robust default that handles 382 of 383 instances, and a small set of documented settings for the rare instance that needs more. When a solve stalls, <code>diag_clamp</code> is a good first setting to try. Turning adaptive scaling off with <code>diag_adapt=False</code> is another.</p>
+</section>
+</section>
+<section id="caveats-and-reproducing-the-run" class="level2">
+<h2 class="anchored" data-anchor-id="caveats-and-reproducing-the-run">Caveats and reproducing the run</h2>
+<p>Three points matter when reading these numbers.</p>
+<ul>
+<li><strong>The certificate is on the presolved LP.</strong> After HiGHS postsolve, 297 of the 383 points also pass the 1e-4 certificate on the original LP. Postsolve can enlarge a first-order solution’s small dual errors. Presolve can also rescale a problem a lot, which changes what a relative tolerance means. On leo1, presolve folds a row with 1e7 coefficients into the cost, so the objective is right but the original dual test fails. When the original certificate matters, polishing, iterative refinement or crossover can tighten the postsolved point.</li>
+<li><strong>The time limit matters for the hardest few.</strong> With a 600-second limit, earlier runs certified 380 of 383. hgms30 and fhnw-binschedule1 need 20 to 26 minutes.</li>
+<li><strong>GPU runs are not bit-for-bit repeatable.</strong> The order of scatter-add operations varies, so identical runs can differ by several epochs.</li>
+</ul>
+<p>The MPS files are not shipped with Jaddle. Download the 383 instances from the <a href="https://miplib.zib.de/">MIPLIB 2017 site</a> into <code>data/</code>, then run from the repository root:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">python</span> benchmarks/benchmark.py <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--tol</span> 1e-4 <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--max-seconds</span> 3600 <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--highs-solver</span> none</span></code></pre></div></div>
+<p><code>--highs-solver none</code> skips the HiGHS reference solve, which can take longer than Jaddle’s. Add <code>--diag-clamp 1e8</code> to rerun hgms62 with the wider clamp. The harness and its options are documented in <a href="https://github.com/BrendanVR/Jaddle/blob/main/benchmarks/README.md"><code>benchmarks/README.md</code></a>.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>linear programming</category>
+  <category>benchmarks</category>
+  <guid>https://brendanvr.github.io/jaddle-blog/posts/miplib-benchmark/miplib_benchmark.html</guid>
+  <pubDate>Thu, 22 Oct 2026 16:00:00 GMT</pubDate>
+</item>
 <item>
   <title>How Jaddle Works</title>
   <dc:creator>Brendan van Rooyen</dc:creator>
@@ -116,7 +435,7 @@
 <h3 class="anchored" data-anchor-id="try-it">Try it</h3>
 <p>Drag the sliders and watch the shopper and referee move. Each blue dot is one turn. Both start at zero.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb1" data-startfrom="197" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 196;"><span id="cb1-197"><span class="kw" style="color: #003B4F;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb1" data-startfrom="198" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 197;"><span id="cb1-198"><span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">function</span> <span class="fu" style="color: #4758AB;
@@ -124,7 +443,7 @@ background-color: null;
 font-style: inherit;">simulate</span>(eta<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span> n) {</span>
-<span id="cb1-198">  <span class="kw" style="color: #003B4F;
+<span id="cb1-199">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">let</span> x <span class="op" style="color: #5E5E5E;
@@ -152,7 +471,7 @@ background-color: null;
 font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb1-199">  <span class="kw" style="color: #003B4F;
+<span id="cb1-200">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> pts <span class="op" style="color: #5E5E5E;
@@ -160,7 +479,7 @@ background-color: null;
 font-style: inherit;">=</span> []<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb1-200">  <span class="cf" style="color: #003B4F;
+<span id="cb1-201">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
@@ -179,7 +498,7 @@ background-color: null;
 font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">++</span>) {</span>
-<span id="cb1-201">    x <span class="op" style="color: #5E5E5E;
+<span id="cb1-202">    x <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="bu" style="color: null;
 background-color: null;
@@ -204,7 +523,7 @@ background-color: null;
 font-style: inherit;">;</span>   <span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">// shopper walks downhill</span></span>
-<span id="cb1-202">    y <span class="op" style="color: #5E5E5E;
+<span id="cb1-203">    y <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="bu" style="color: null;
 background-color: null;
@@ -229,7 +548,7 @@ background-color: null;
 font-style: inherit;">;</span>   <span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">// referee walks uphill</span></span>
-<span id="cb1-203">    sx <span class="op" style="color: #5E5E5E;
+<span id="cb1-204">    sx <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+=</span> x<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -238,7 +557,7 @@ background-color: null;
 font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb1-204">    pts<span class="op" style="color: #5E5E5E;
+<span id="cb1-205">    pts<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -265,14 +584,14 @@ background-color: null;
 font-style: inherit;">/</span> i})<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb1-205">  }</span>
-<span id="cb1-206">  <span class="cf" style="color: #003B4F;
+<span id="cb1-206">  }</span>
+<span id="cb1-207">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">return</span> pts<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb1-207">}</span></code></pre></div></div>
+<span id="cb1-208">}</span></code></pre></div></div>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-1" data-nodetype="declaration">
 
@@ -280,7 +599,7 @@ font-style: inherit;">;</span></span>
 </div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb2" data-startfrom="211" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 210;"><span id="cb2-211"><span class="kw" style="color: #003B4F;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb2" data-startfrom="212" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 211;"><span id="cb2-212"><span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">function</span> <span class="fu" style="color: #4758AB;
@@ -288,13 +607,13 @@ background-color: null;
 font-style: inherit;">saddlePlot</span>(pts<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span> showAvg) {</span>
-<span id="cb2-212">  <span class="kw" style="color: #003B4F;
+<span id="cb2-213">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> marks <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> [</span>
-<span id="cb2-213">    Plot<span class="op" style="color: #5E5E5E;
+<span id="cb2-214">    Plot<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -333,7 +652,7 @@ background-color: null;
 font-style: inherit;">0.45</span>})<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-214">    Plot<span class="op" style="color: #5E5E5E;
+<span id="cb2-215">    Plot<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -370,14 +689,14 @@ background-color: null;
 font-style: inherit;">:</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"#4c78a8"</span>})</span>
-<span id="cb2-215">  ]<span class="op" style="color: #5E5E5E;
+<span id="cb2-216">  ]<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-216">  <span class="cf" style="color: #003B4F;
+<span id="cb2-217">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">if</span> (showAvg) {</span>
-<span id="cb2-217">    marks<span class="op" style="color: #5E5E5E;
+<span id="cb2-218">    marks<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -420,7 +739,7 @@ background-color: null;
 font-style: inherit;">2.5</span>}))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-218">    marks<span class="op" style="color: #5E5E5E;
+<span id="cb2-219">    marks<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -471,8 +790,8 @@ background-color: null;
 font-style: inherit;">"#f58518"</span>}))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-219">  }</span>
-<span id="cb2-220">  marks<span class="op" style="color: #5E5E5E;
+<span id="cb2-220">  }</span>
+<span id="cb2-221">  marks<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -537,7 +856,7 @@ background-color: null;
 font-style: inherit;">"white"</span>}))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-221">  marks<span class="op" style="color: #5E5E5E;
+<span id="cb2-222">  marks<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -599,7 +918,7 @@ background-color: null;
 font-style: inherit;">14</span>}))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-222">  <span class="cf" style="color: #003B4F;
+<span id="cb2-223">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">return</span> Plot<span class="op" style="color: #5E5E5E;
@@ -607,7 +926,7 @@ background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">plot</span>({</span>
-<span id="cb2-223">    <span class="dt" style="color: #AD0000;
+<span id="cb2-224">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">width</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -616,7 +935,7 @@ background-color: null;
 font-style: inherit;">520</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-224">    <span class="dt" style="color: #AD0000;
+<span id="cb2-225">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">height</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -625,7 +944,7 @@ background-color: null;
 font-style: inherit;">420</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-225">    <span class="dt" style="color: #AD0000;
+<span id="cb2-226">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">grid</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -635,7 +954,7 @@ font-weight: bold;
 font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-226">    <span class="dt" style="color: #AD0000;
+<span id="cb2-227">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -660,7 +979,7 @@ background-color: null;
 font-style: inherit;">"x = kilos of flour (shopper) →"</span>}<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-227">    <span class="dt" style="color: #AD0000;
+<span id="cb2-228">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -685,11 +1004,11 @@ background-color: null;
 font-style: inherit;">"↑ y = fine per missing kilo (referee)"</span>}<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb2-228">    marks</span>
-<span id="cb2-229">  })<span class="op" style="color: #5E5E5E;
+<span id="cb2-229">    marks</span>
+<span id="cb2-230">  })<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb2-230">}</span></code></pre></div></div>
+<span id="cb2-231">}</span></code></pre></div></div>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-2" data-nodetype="declaration">
 
@@ -697,7 +1016,7 @@ font-style: inherit;">;</span></span>
 </div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb3" data-startfrom="235" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 234;"><span id="cb3-235">viewof eta1 <span class="op" style="color: #5E5E5E;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb3" data-startfrom="236" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 235;"><span id="cb3-236">viewof eta1 <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -734,7 +1053,7 @@ background-color: null;
 font-style: inherit;">:</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"Step size"</span>})</span>
-<span id="cb3-236">viewof n1 <span class="op" style="color: #5E5E5E;
+<span id="cb3-237">viewof n1 <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -771,7 +1090,7 @@ background-color: null;
 font-style: inherit;">:</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"Number of turns"</span>})</span>
-<span id="cb3-237"><span class="fu" style="color: #4758AB;
+<span id="cb3-238"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">saddlePlot</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
@@ -818,7 +1137,7 @@ font-style: inherit;">false</span>)</span></code></pre></div></div>
 <p>Think of a dog on a lead running in circles around a post. Take a photo every second and average the dog’s position over all the photos: you get the post.</p>
 <p>The orange line below is the average. Turn up the number of turns and watch it home in on the answer.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb4" data-startfrom="273" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 272;"><span id="cb4-273">viewof eta2 <span class="op" style="color: #5E5E5E;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb4" data-startfrom="274" data-source-offset="-0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 273;"><span id="cb4-274">viewof eta2 <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -855,7 +1174,7 @@ background-color: null;
 font-style: inherit;">:</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"Step size"</span>})</span>
-<span id="cb4-274">viewof n2 <span class="op" style="color: #5E5E5E;
+<span id="cb4-275">viewof n2 <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> Inputs<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -892,7 +1211,7 @@ background-color: null;
 font-style: inherit;">:</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"Number of turns"</span>})</span>
-<span id="cb4-275"><span class="fu" style="color: #4758AB;
+<span id="cb4-276"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">saddlePlot</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1084,10 +1403,10 @@ font-style: inherit;">true</span>)</span></code></pre></div></div>
 <h3 class="anchored" data-anchor-id="see-the-difference">See the difference</h3>
 <p>Here is the flour problem again with a fixed step size, scored by the wrongness score above. The score axis is logarithmic: each step down the axis divides the score by the same amount.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb5" data-startfrom="508" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 507;"><span id="cb5-508">restartData <span class="op" style="color: #5E5E5E;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb5" data-startfrom="509" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 508;"><span id="cb5-509">restartData <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> {</span>
-<span id="cb5-509">  <span class="kw" style="color: #003B4F;
+<span id="cb5-510">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> merit <span class="op" style="color: #5E5E5E;
@@ -1104,7 +1423,7 @@ background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">max</span>(</span>
-<span id="cb5-510">    <span class="bu" style="color: null;
+<span id="cb5-511">    <span class="bu" style="color: null;
 background-color: null;
 font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1125,7 +1444,7 @@ background-color: null;
 font-style: inherit;">4</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb5-511">    <span class="bu" style="color: null;
+<span id="cb5-512">    <span class="bu" style="color: null;
 background-color: null;
 font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1146,7 +1465,7 @@ background-color: null;
 font-style: inherit;">3</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb5-512">    <span class="bu" style="color: null;
+<span id="cb5-513">    <span class="bu" style="color: null;
 background-color: null;
 font-style: inherit;">Math</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1191,10 +1510,10 @@ background-color: null;
 font-style: inherit;">3</span> <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> y))</span>
-<span id="cb5-513">  )<span class="op" style="color: #5E5E5E;
+<span id="cb5-514">  )<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-514">  <span class="kw" style="color: #003B4F;
+<span id="cb5-515">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> step <span class="op" style="color: #5E5E5E;
@@ -1207,7 +1526,7 @@ font-style: inherit;">,</span> eta) <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">=&gt;</span> {</span>
-<span id="cb5-515">    x <span class="op" style="color: #5E5E5E;
+<span id="cb5-516">    x <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="bu" style="color: null;
 background-color: null;
@@ -1230,7 +1549,7 @@ background-color: null;
 font-style: inherit;">-</span> y))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-516">    y <span class="op" style="color: #5E5E5E;
+<span id="cb5-517">    y <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="bu" style="color: null;
 background-color: null;
@@ -1253,7 +1572,7 @@ background-color: null;
 font-style: inherit;">-</span> x))<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-517">    <span class="cf" style="color: #003B4F;
+<span id="cb5-518">    <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">return</span> [x<span class="op" style="color: #5E5E5E;
@@ -1261,10 +1580,10 @@ background-color: null;
 font-style: inherit;">,</span> y]<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-518">  }<span class="op" style="color: #5E5E5E;
+<span id="cb5-519">  }<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-519">  <span class="kw" style="color: #003B4F;
+<span id="cb5-520">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> eta <span class="op" style="color: #5E5E5E;
@@ -1290,11 +1609,11 @@ background-color: null;
 font-style: inherit;">=</span> []<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-520"></span>
-<span id="cb5-521">  <span class="co" style="color: #5E5E5E;
+<span id="cb5-521"></span>
+<span id="cb5-522">  <span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">// No restarts: score the current point and the average.</span></span>
-<span id="cb5-522">  <span class="kw" style="color: #003B4F;
+<span id="cb5-523">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">let</span> x <span class="op" style="color: #5E5E5E;
@@ -1322,7 +1641,7 @@ background-color: null;
 font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-523">  <span class="cf" style="color: #003B4F;
+<span id="cb5-524">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
@@ -1341,7 +1660,7 @@ background-color: null;
 font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">++</span>) {</span>
-<span id="cb5-524">    [x<span class="op" style="color: #5E5E5E;
+<span id="cb5-525">    [x<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span> y] <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1354,7 +1673,7 @@ background-color: null;
 font-style: inherit;">,</span> eta)<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-525">    sx <span class="op" style="color: #5E5E5E;
+<span id="cb5-526">    sx <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+=</span> x<span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1363,7 +1682,7 @@ background-color: null;
 font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-526">    rows<span class="op" style="color: #5E5E5E;
+<span id="cb5-527">    rows<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1396,7 +1715,7 @@ background-color: null;
 font-style: inherit;">"Current point only"</span>})<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-527">    rows<span class="op" style="color: #5E5E5E;
+<span id="cb5-528">    rows<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1433,12 +1752,12 @@ background-color: null;
 font-style: inherit;">"Average"</span>})<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-528">  }</span>
-<span id="cb5-529"></span>
-<span id="cb5-530">  <span class="co" style="color: #5E5E5E;
+<span id="cb5-529">  }</span>
+<span id="cb5-530"></span>
+<span id="cb5-531">  <span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">// With restarts.</span></span>
-<span id="cb5-531">  x <span class="op" style="color: #5E5E5E;
+<span id="cb5-532">  x <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
 background-color: null;
@@ -1463,7 +1782,7 @@ background-color: null;
 font-style: inherit;">0</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-532">  <span class="kw" style="color: #003B4F;
+<span id="cb5-533">  <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">let</span> n <span class="op" style="color: #5E5E5E;
@@ -1492,7 +1811,7 @@ font-weight: bold;
 font-style: inherit;">Infinity</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-533">  <span class="cf" style="color: #003B4F;
+<span id="cb5-534">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">for</span> (<span class="kw" style="color: #003B4F;
@@ -1511,7 +1830,7 @@ background-color: null;
 font-style: inherit;">;</span> i<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">++</span>) {</span>
-<span id="cb5-534">    [x<span class="op" style="color: #5E5E5E;
+<span id="cb5-535">    [x<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span> y] <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1524,7 +1843,7 @@ background-color: null;
 font-style: inherit;">,</span> eta)<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-535">    n<span class="op" style="color: #5E5E5E;
+<span id="cb5-536">    n<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">++;</span> sx <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1535,7 +1854,7 @@ background-color: null;
 font-style: inherit;">+=</span> y<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-536">    <span class="kw" style="color: #003B4F;
+<span id="cb5-537">    <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> ax <span class="op" style="color: #5E5E5E;
@@ -1551,7 +1870,7 @@ background-color: null;
 font-style: inherit;">/</span> n<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-537">    <span class="kw" style="color: #003B4F;
+<span id="cb5-538">    <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> ma <span class="op" style="color: #5E5E5E;
@@ -1583,7 +1902,7 @@ background-color: null;
 font-style: inherit;">,</span> mi)<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-538">    rows<span class="op" style="color: #5E5E5E;
+<span id="cb5-539">    rows<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1612,7 +1931,7 @@ background-color: null;
 font-style: inherit;">"Average + restarts"</span>})<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-539">    <span class="kw" style="color: #003B4F;
+<span id="cb5-540">    <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> good <span class="op" style="color: #5E5E5E;
@@ -1626,7 +1945,7 @@ background-color: null;
 font-style: inherit;">*</span> mLast<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-540">    <span class="kw" style="color: #003B4F;
+<span id="cb5-541">    <span class="kw" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">const</span> stalling <span class="op" style="color: #5E5E5E;
@@ -1644,7 +1963,7 @@ background-color: null;
 font-style: inherit;">&gt;</span> prev<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-541">    <span class="cf" style="color: #003B4F;
+<span id="cb5-542">    <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">if</span> (n <span class="op" style="color: #5E5E5E;
@@ -1656,7 +1975,7 @@ background-color: null;
 font-style: inherit;">&amp;&amp;</span> (good <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">||</span> stalling)) {</span>
-<span id="cb5-542">      <span class="cf" style="color: #003B4F;
+<span id="cb5-543">      <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">if</span> (ma <span class="op" style="color: #5E5E5E;
@@ -1670,7 +1989,7 @@ background-color: null;
 font-style: inherit;">=</span> ay<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span> }</span>
-<span id="cb5-543">      sx <span class="op" style="color: #5E5E5E;
+<span id="cb5-544">      sx <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> <span class="dv" style="color: #AD0000;
 background-color: null;
@@ -1700,24 +2019,24 @@ font-weight: bold;
 font-style: inherit;">Infinity</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-544">    } <span class="cf" style="color: #003B4F;
+<span id="cb5-545">    } <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">else</span> {</span>
-<span id="cb5-545">      prev <span class="op" style="color: #5E5E5E;
+<span id="cb5-546">      prev <span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">=</span> m<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-546">    }</span>
-<span id="cb5-547">  }</span>
-<span id="cb5-548">  <span class="cf" style="color: #003B4F;
+<span id="cb5-547">    }</span>
+<span id="cb5-548">  }</span>
+<span id="cb5-549">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">return</span> rows<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">;</span></span>
-<span id="cb5-549">}</span></code></pre></div></div>
+<span id="cb5-550">}</span></code></pre></div></div>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-5" data-nodetype="declaration">
 
@@ -1725,12 +2044,12 @@ font-style: inherit;">;</span></span>
 </div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb6" data-startfrom="553" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 552;"><span id="cb6-553">Plot<span class="op" style="color: #5E5E5E;
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb6" data-startfrom="554" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 553;"><span id="cb6-554">Plot<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">plot</span>({</span>
-<span id="cb6-554">  <span class="dt" style="color: #AD0000;
+<span id="cb6-555">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">width</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1739,7 +2058,7 @@ background-color: null;
 font-style: inherit;">620</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-555">  <span class="dt" style="color: #AD0000;
+<span id="cb6-556">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">height</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1748,7 +2067,7 @@ background-color: null;
 font-style: inherit;">380</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-556">  <span class="dt" style="color: #AD0000;
+<span id="cb6-557">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">grid</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1758,7 +2077,7 @@ font-weight: bold;
 font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-557">  <span class="dt" style="color: #AD0000;
+<span id="cb6-558">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">x</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1771,7 +2090,7 @@ background-color: null;
 font-style: inherit;">"turns →"</span>}<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-558">  <span class="dt" style="color: #AD0000;
+<span id="cb6-559">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">y</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1800,12 +2119,12 @@ background-color: null;
 font-style: inherit;">".0e"</span>}<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-559">  <span class="dt" style="color: #AD0000;
+<span id="cb6-560">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">color</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">:</span> {</span>
-<span id="cb6-560">    <span class="dt" style="color: #AD0000;
+<span id="cb6-561">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">legend</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1815,7 +2134,7 @@ font-weight: bold;
 font-style: inherit;">true</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-561">    <span class="dt" style="color: #AD0000;
+<span id="cb6-562">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">domain</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1832,7 +2151,7 @@ background-color: null;
 font-style: inherit;">"Average + restarts"</span>]<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-562">    <span class="dt" style="color: #AD0000;
+<span id="cb6-563">    <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">range</span><span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -1847,15 +2166,15 @@ background-color: null;
 font-style: inherit;">,</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"#54a24b"</span>]</span>
-<span id="cb6-563">  }<span class="op" style="color: #5E5E5E;
+<span id="cb6-564">  }<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">,</span></span>
-<span id="cb6-564">  <span class="dt" style="color: #AD0000;
+<span id="cb6-565">  <span class="dt" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">marks</span><span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">:</span> [</span>
-<span id="cb6-565">    Plot<span class="op" style="color: #5E5E5E;
+<span id="cb6-566">    Plot<span class="op" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">.</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -1892,8 +2211,8 @@ background-color: null;
 font-style: inherit;">:</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2</span>})</span>
-<span id="cb6-566">  ]</span>
-<span id="cb6-567">})</span></code></pre></div></div>
+<span id="cb6-567">  ]</span>
+<span id="cb6-568">})</span></code></pre></div></div>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-6" data-nodetype="expression">
 
@@ -2002,6 +2321,10 @@ repeat:
 </section>
 
  ]]></description>
+  <category>jaddle</category>
+  <category>optimisation</category>
+  <category>duality</category>
+  <category>algorithms</category>
   <guid>https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how_jaddle_works.html</guid>
   <pubDate>Wed, 21 Oct 2026 16:00:00 GMT</pubDate>
   <media:content url="https://brendanvr.github.io/jaddle-blog/posts/how-jaddle-works/how-jaddle-works-logo.svg" medium="image" type="image/svg+xml"/>
