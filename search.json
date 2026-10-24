@@ -4,7 +4,7 @@
     "href": "about.html",
     "title": "About",
     "section": "",
-    "text": "This is a blog about Jaddle, a project I’m working on."
+    "text": "Jaddle is an open-source optimisation solver built with JAX. It finds the best answer to problems that come with rules attached: the cheapest way to plan a power grid, the safest mix of investments, or the smoothest route for a fleet of robots. It works by turning each problem into a game between two players, a shopper and a referee, who learn from each other until they settle at a saddle point (hence the name). Every step is simple and cheap, so Jaddle runs well on GPUs and is at its best on very large problems, or on thousands of small ones solved at once. I’m Brendan van Rooyen, and I build Jaddle as part of Epigraph Solutions, an open-source organisation working on machine learning and optimisation. This blog explains the ideas behind Jaddle in plain language and shows it at work on real problems. If you have a question, or a problem you’d like to try it on, get in touch."
   },
   {
     "objectID": "posts/saddle-point-solvers/saddle-point-solvers.html",

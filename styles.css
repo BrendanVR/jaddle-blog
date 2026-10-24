@@ -73,3 +73,24 @@ a {
     height: 28px;
   }
 }
+
+/* Epigraph Solutions branding */
+.epigraph-nav-icon {
+  height: 22px;
+  width: auto;
+  opacity: 0.85;
+  vertical-align: middle;
+}
+
+.epigraph-wordmark {
+  height: 26px;
+  width: auto;
+  margin-top: 0.35rem;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+
+.epigraph-nav-icon:hover,
+.epigraph-wordmark:hover {
+  opacity: 1;
+}
